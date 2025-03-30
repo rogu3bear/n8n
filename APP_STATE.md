@@ -10,8 +10,8 @@
 ## Development Progress
 - [x] Initial project setup
 - [x] Basic Electron wrapper structure
-- [ ] Docker installation verification
-- [ ] Installation guidance interface
+- [x] Docker installation verification
+- [x] Installation guidance interface
 - [ ] Docker installation process
 - [ ] Post-installation verification
 
@@ -40,8 +40,8 @@
 - Cross-platform compatibility
 
 ## Next Steps
-1. Implement Docker installation check
-2. Create installation guidance interface
+1. ~~Implement Docker installation check~~ ✓
+2. ~~Create installation guidance interface~~ ✓
 3. Add installation process handlers
 4. Implement verification system
 5. Add error handling and recovery 

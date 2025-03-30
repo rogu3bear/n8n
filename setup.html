@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Updated CSP for better iframe support and resource loading -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://rsms.me; font-src 'self' https://rsms.me; connect-src 'self'; img-src 'self' data:; frame-ancestors 'self';">
+  <title>Configure External API Keys</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+  <style>
+    html { font-family: 'Inter', sans-serif; }
+    @supports (font-variation-settings: normal) {
+      html { font-family: 'Inter var', sans-serif; }
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      width: 100%;
+      overflow: auto;
+    }
+    .container-wrapper {
+      padding: 1.5rem;
+    }
+  </style>
+  <script>
+    // Check for saved theme preference
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    if (currentTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
+    
+    // Define Tailwind dark mode config
+    tailwind.config = {
+      darkMode: 'class'
+    };
+  </script>
+</head>
+<body class="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+  <div class="container-wrapper">
+    <h1 class="text-2xl font-bold mb-4 text-center">Configure API Keys</h1>
+    <p class="text-center text-gray-600 dark:text-gray-400 mb-6">Provide API keys if your workflows need to connect to external services. You can skip this and configure credentials later within the n8n editor.</p>
+
+    <!-- API Key 1 Input -->
+    <div class="mb-6 relative">
+      <label for="key1" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Key 1 (Optional)</label>
+      <input id="key1" type="password" class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500" placeholder="Enter API Key 1 if needed">
+      <span class="block text-xs text-gray-500 dark:text-gray-400 mt-1">Example: Key for connecting to Service X.</span>
+    </div>
+
+    <!-- API Key 2 Input -->
+    <div class="mb-8 relative">
+      <label for="key2" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Key 2 (Optional)</label>
+      <input id="key2" type="password" class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-500" placeholder="Enter API Key 2 if needed">
+      <span class="block text-xs text-gray-500 dark:text-gray-400 mt-1">Example: Key for connecting to Service Y.</span>
+    </div>
+
+    <!-- Error Message Area -->
+    <div id="error-message" class="text-red-500 dark:text-red-400 text-sm mb-4 text-center h-5"></div>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 justify-between">
+      <button id="skip" class="w-full sm:w-auto bg-gray-500 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-white py-2 px-4 rounded transition duration-150 ease-in-out order-2 sm:order-1">
+          Skip Setup
+      </button>
+      <div class="flex space-x-2 order-1 sm:order-2">
+        <button id="test" class="flex-1 bg-teal-600 hover:bg-teal-500 text-white py-2 px-4 rounded transition duration-150 ease-in-out" title="Feature not yet implemented">
+            Test Keys
+        </button>
+        <button id="save" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">
+            Save Keys
+        </button>
+      </div>
+    </div>
+    
+    <!-- Theme Toggle -->
+    <div class="mt-6 text-center">
+      <button id="theme-toggle" class="text-xs text-gray-500 dark:text-gray-400 underline hover:text-gray-700 dark:hover:text-gray-200">
+        Toggle Light/Dark Mode
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Use the secure api bridge instead of direct ipcRenderer
+    // const { ipcRenderer } = require('electron');
+
+    const key1Input = document.getElementById('key1');
+    const key2Input = document.getElementById('key2');
+    const errorMessageDiv = document.getElementById('error-message');
+    const saveButton = document.getElementById('save');
+    const testButton = document.getElementById('test');
+    const skipButton = document.getElementById('skip');
+    const themeToggle = document.getElementById('theme-toggle');
+
+    // Theme toggle handler
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = localStorage.getItem('theme') || 'light';
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      
+      if (newTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+        // Also notify parent if we're in an iframe
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'theme-change', theme: 'dark' }, '*');
+          }
+        } catch (e) {
+          console.log('Could not communicate with parent frame', e);
+        }
+      } else {
+        document.documentElement.classList.remove('dark');
+        // Also notify parent if we're in an iframe
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'theme-change', theme: 'light' }, '*');
+          }
+        } catch (e) {
+          console.log('Could not communicate with parent frame', e);
+        }
+      }
+      
+      localStorage.setItem('theme', newTheme);
+    });
+
+    saveButton.addEventListener('click', () => {
+      errorMessageDiv.textContent = '';
+      saveButton.disabled = true;
+      saveButton.textContent = 'Saving...';
+
+      const apiKey1 = key1Input.value.trim();
+      const apiKey2 = key2Input.value.trim();
+
+      // Only require keys if at least one is entered
+      if ((apiKey1 && !apiKey2) || (!apiKey1 && apiKey2)) {
+          errorMessageDiv.textContent = 'Please provide both keys or leave both empty to save.';
+          saveButton.disabled = false;
+          saveButton.textContent = 'Save Keys';
+          return;
+      }
+
+      if (!apiKey1 && !apiKey2) {
+        console.log('No API keys entered, proceeding without saving config.');
+        // Signal main process to proceed without creating config
+        window.api.skipApiSetup();
+      } else {
+        console.log('API keys entered, attempting to save...');
+        // Send keys to the main process for secure handling
+        window.api.saveApiKeys({ apiKey1, apiKey2 });
+      }
+    });
+
+    skipButton.addEventListener('click', () => {
+      console.log('Skip button clicked.');
+      skipButton.disabled = true;
+      skipButton.textContent = 'Skipping...';
+      // Signal main process to proceed without creating config
+      window.api.skipApiSetup();
+    });
+
+    testButton.addEventListener('click', () => {
+      errorMessageDiv.textContent = 'Test connection feature not implemented yet.';
+      // Optional: Add test logic here later
+    });
+
+    // Listen for potential save error messages from the main process
+    window.api.onSaveApiKeysError((event, errorMessage) => {
+      console.error('Error saving API keys received from main:', errorMessage);
+      errorMessageDiv.textContent = `Error: ${errorMessage}`;
+      // Re-enable save button on error
+      saveButton.disabled = false;
+      saveButton.textContent = 'Save Keys';
+    });
+
+    // Inform the parent window that we're ready so it can adjust iframe size if needed
+    window.addEventListener('load', () => {
+      try {
+        if (window.parent && window.parent !== window) {
+          const height = document.body.scrollHeight;
+          window.parent.postMessage({ type: 'iframe-height', height }, '*');
+        }
+      } catch (e) {
+        console.log('Could not communicate with parent frame', e);
+      }
+    });
+
+    // Note: Main process handles window reload on save/skip success.
+  </script>
+</body>
+</html> 

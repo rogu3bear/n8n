@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Adjust CSP for Tailwind, localhost connections, and potentially icons/fonts later -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://rsms.me; font-src 'self' https://rsms.me; connect-src 'self' http://localhost:*; img-src 'self' data:; frame-src 'self';">
+    <title>n8n Desktop</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 h-screen overflow-hidden flex flex-col">
+
+    <!-- Optional Setup Modal -->
+    <div id="setup-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <iframe id="setup-frame" src="setup.html" title="n8n Setup Configuration" class="w-full max-w-lg h-auto max-h-[80vh] border-none rounded-lg shadow-xl"></iframe>
+    </div>
+
+    <!-- Main Application Structure -->
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white dark:bg-gray-800 shadow-md flex flex-col justify-between">
+            <div>
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h1 class="text-xl font-bold text-center">n8n Desktop</h1>
+                    <div class="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">v1.0.0</div>
+                </div>
+                <nav class="mt-4">
+                    <ul>
+                        <li><a href="#dashboard" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded mx-2 nav-link" data-section="dashboard">
+                            <!-- Placeholder for SVG icon --> <span class="sidebar-icon">📊</span> Dashboard
+                        </a></li>
+                        <li><a href="#workflows" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded mx-2 nav-link" data-section="workflows">
+                            <!-- Placeholder for SVG icon --> <span class="sidebar-icon">⚙️</span> Workflows
+                        </a></li>
+                        <li><a href="#agents" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded mx-2 nav-link" data-section="agents">
+                            <!-- Placeholder for SVG icon --> <span class="sidebar-icon">🤖</span> Agent Templates
+                        </a></li>
+                         <li><a href="#logs" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded mx-2 nav-link" data-section="logs">
+                             <!-- Placeholder for SVG icon --> <span class="sidebar-icon">📜</span> Logs
+                         </a></li>
+                    </ul>
+                </nav>
+            </div>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                 <button id="launch-editor" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-150 ease-in-out flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                     <!-- Placeholder for SVG icon --> <span class="mr-2">🚀</span> Launch Full Editor
+                 </button>
+                 <div class="mt-4 flex justify-between items-center text-sm">
+                     <span id="theme-toggle-label">Toggle Theme</span>
+                     <button id="theme-toggle" class="p-1 rounded bg-gray-200 dark:bg-gray-700">
+                        <span id="theme-icon">🌙</span> <!-- Icon changes with theme -->
+                     </button>
+                 </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
+                <h2 id="section-title" class="text-lg font-semibold">Dashboard</h2>
+                <div class="flex items-center space-x-4">
+                    <!-- Status Indicator -->
+                    <div id="status-indicator" class="flex items-center space-x-2">
+                        <span id="status-dot" class="w-3 h-3 rounded-full bg-yellow-500 animate-pulse"></span>
+                        <span id="status-text" class="text-sm text-gray-600 dark:text-gray-400">Initializing...</span>
+                        <div id="startup-detail" class="text-xs text-gray-500 dark:text-gray-400 hidden">
+                            <span id="startup-stage"></span>
+                        </div>
+                    </div>
+                    <!-- Skip API Keys Button -->
+                    <button id="skipApiKeysButton" class="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-sm">Skip API Setup</button>
+                    <!-- Progress Bar - now visible by default -->
+                    <div id="progress-container" class="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                        <div id="n8n-progress-bar" class="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-linear w-0"></div>
+                    </div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">ENV: <span id="env-indicator">dev</span></span>
+                    <button id="settings-button" title="Settings (Not Implemented)" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                        <!-- Settings Icon SVG -->
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.004.827c-.292.24-.437.613-.43.992a6.759 6.759 0 0 1 0 1.903c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.759 6.759 0 0 1 0-1.903c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.217.456c.355.133.75.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.213-1.28Z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="flex-1 overflow-y-auto p-6 bg-gray-100 dark:bg-gray-900">
+                <!-- Sections (only one visible at a time) -->
+                <section id="dashboard-section" class="content-section">
+                    <h3 class="text-xl font-semibold mb-4">Dashboard Overview</h3>
+                    <p>Welcome! n8n status and quick actions will appear here.</p>
+                    <!-- Placeholder for dashboard widgets -->
+                </section>
+
+                <section id="workflows-section" class="content-section hidden">
+                    <h3 class="text-xl font-semibold mb-4">Workflows</h3>
+                     <div class="mb-4 flex justify-between items-center">
+                         <input type="text" id="workflow-search" placeholder="Search workflows..." class="p-2 border rounded bg-white dark:bg-gray-700 dark:border-gray-600">
+                         <div>
+                             <button id="import-workflow" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded mr-2">Import</button>
+                             <button id="create-workflow" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">Create New</button>
+                         </div>
+                     </div>
+                    <div id="workflow-list">
+                        <!-- Workflow items will be loaded here -->
+                        <p class="text-gray-500">Loading workflows...</p>
+                    </div>
+                </section>
+
+                <section id="agents-section" class="content-section hidden">
+                    <h3 class="text-xl font-semibold mb-4">Agent Templates</h3>
+                    <p>Select an agent template to get started quickly.</p>
+                    <!-- Placeholder for agent template cards -->
+                </section>
+
+                <section id="logs-section" class="content-section hidden">
+                     <h3 class="text-xl font-semibold mb-4">Execution Logs</h3>
+                     <div id="logs-output" class="text-xs font-mono bg-white dark:bg-gray-800 p-4 rounded shadow h-96 overflow-y-auto">
+                         <p class="text-gray-500">Logs will appear here...</p>
+                     </div>
+                 </section>
+
+                 <!-- n8n Editor iframe container -->
+                 <section id="editor-section" class="content-section hidden h-full">
+                     <div class="flex justify-between items-center mb-2">
+                         <h3 class="text-xl font-semibold">n8n Editor</h3>
+                         <button id="back-to-dashboard" class="bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded text-sm">Back to Dashboard</button>
+                     </div>
+                     <iframe id="n8n-iframe" src="about:blank" title="n8n Workflow Editor" class="w-full h-[calc(100%-40px)] border rounded border-gray-300 dark:border-gray-700"></iframe>
+                 </section>
+
+                 <!-- General Log/Status Area (maybe for app-level logs?) -->
+                 <div id="general-log-area" class="mt-4 text-xs text-gray-600 dark:text-gray-400 h-20 overflow-y-auto border-t border-gray-200 dark:border-gray-700 pt-2">
+                     App status messages will appear here...
+                 </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Use the secure api bridge instead of direct ipcRenderer
+        // const { ipcRenderer } = require('electron');
+
+        // --- DOM Elements ---
+        const setupModal = document.getElementById('setup-modal');
+        const setupFrame = document.getElementById('setup-frame');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const contentSections = document.querySelectorAll('.content-section');
+        const sectionTitle = document.getElementById('section-title');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const launchEditorButton = document.getElementById('launch-editor');
+        const n8nIframe = document.getElementById('n8n-iframe');
+        const backToDashboardButton = document.getElementById('back-to-dashboard');
+        const generalLogArea = document.getElementById('general-log-area');
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const progressBar = document.getElementById('n8n-progress-bar');
+        const progressContainer = document.getElementById('progress-container');
+        const startupDetail = document.getElementById('startup-detail');
+        const startupStage = document.getElementById('startup-stage');
+        const skipApiKeysButton = document.getElementById('skipApiKeysButton');
+
+        // --- State ---
+        let activePort = null;
+        let n8nIsReady = false;
+        let currentTheme = localStorage.getItem('theme') || 'light';
+
+        // --- Initialization ---
+        function initializeApp() {
+            logToGeneralArea('App Initializing...');
+            // Apply initial theme
+            applyTheme(currentTheme);
+            // Add navigation logic
+            setupNavigation();
+            // Add theme toggle logic
+            setupThemeToggle();
+            // Show Dashboard by default
+            showSection('dashboard');
+            
+            // Set up electron event listeners
+            if (window.electron) {
+                window.electron.onN8nStatusUpdate((data) => {
+                    logToGeneralArea(`Received status update via callback: ${JSON.stringify(data)}`);
+                });
+                window.electron.onN8nInitInfo((data) => {
+                    logToGeneralArea(`Received init info via callback: ${JSON.stringify(data)}`);
+                });
+                window.electron.onN8nInitError((data) => {
+                    logToGeneralArea(`Received init error via callback: ${JSON.stringify(data)}`);
+                });
+            } else {
+                logToGeneralArea('ERROR: Electron bridge not available');
+                updateStartupStatus('error', 'Electron bridge not available');
+            }
+        }
+
+        // --- Theme Handling ---
+        function applyTheme(theme) {
+             if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeIcon.textContent = '☀️';
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeIcon.textContent = '🌙';
+            }
+            localStorage.setItem('theme', theme);
+            currentTheme = theme;
+        }
+
+         function setupThemeToggle() {
+            themeToggle.addEventListener('click', () => {
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                applyTheme(newTheme);
+            });
+        }
+
+        // --- Navigation ---
+        function setupNavigation() {
+            navLinks.forEach(link => {
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const sectionId = link.getAttribute('data-section');
+                    showSection(sectionId);
+                    // Update URL hash for visual feedback (optional)
+                    // window.location.hash = link.getAttribute('href');
+                });
+            });
+
+            launchEditorButton.addEventListener('click', () => {
+                if (n8nIsReady && activePort) {
+                    const editorUrl = `http://localhost:${activePort}`;
+                    logToGeneralArea(`Launching editor at ${editorUrl}`);
+                    n8nIframe.src = editorUrl;
+                    showSection('editor');
+                } else {
+                     logToGeneralArea('Cannot launch editor: n8n is not ready.');
+                }
+            });
+
+            backToDashboardButton.addEventListener('click', () => {
+                 n8nIframe.src = 'about:blank'; // Clear iframe src
+                 showSection('dashboard');
+            });
+        }
+
+        function showSection(sectionId) {
+            contentSections.forEach(section => {
+                if (section.id === `${sectionId}-section`) {
+                    section.classList.remove('hidden');
+                } else {
+                    section.classList.add('hidden');
+                }
+            });
+            // Update header title
+            const activeLink = document.querySelector(`.nav-link[data-section="${sectionId}"]`);
+            sectionTitle.textContent = activeLink ? activeLink.textContent.trim() : 'n8n Desktop';
+
+            // Highlight active link (optional)
+             navLinks.forEach(link => link.classList.remove('bg-gray-200', 'dark:bg-gray-700'));
+             if (activeLink) {
+                 activeLink.classList.add('bg-gray-200', 'dark:bg-gray-700');
+             }
+        }
+
+        // --- Logging ---
+        function logToGeneralArea(message) {
+            console.log(`[App Log] ${message}`); // Also log to console
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            // Prepend new messages
+            if (generalLogArea.firstChild && generalLogArea.firstChild.textContent === 'App status messages will appear here...') {
+                generalLogArea.innerHTML = ''; // Clear placeholder
+            }
+            generalLogArea.insertBefore(logEntry, generalLogArea.firstChild);
+            // Limit log entries (optional)
+            // while (generalLogArea.childElementCount > 50) {
+            //    generalLogArea.removeChild(generalLogArea.lastChild);
+            // }
+        }
+
+        // --- IPC Handlers ---
+
+        // Handle prompt to show optional setup
+        window.api.showOptionalSetupPrompt(() => {
+            logToGeneralArea('Received prompt for optional setup.');
+            setupModal.classList.remove('hidden');
+        });
+
+        // Listen for n8n startup status updates
+        window.addEventListener('n8n-status-update', (event) => {
+            const { stage, message } = event.detail;
+            updateStartupStatus(stage, message);
+        });
+
+        // Listen for n8n initialization completion
+        window.addEventListener('n8n-init-info', (event) => {
+            const { port, alreadyRunning } = event.detail;
+            activePort = port;
+            
+            updateStartupStatus('ready', 'n8n is running and ready');
+            n8nIsReady = true;
+            launchEditorButton.disabled = false;
+            
+            logToGeneralArea(`n8n initialized on port ${port}`);
+            if (alreadyRunning) {
+                logToGeneralArea('n8n was already running');
+            }
+        });
+
+        // Listen for n8n initialization errors
+        window.addEventListener('n8n-init-error', (event) => {
+            const { message } = event.detail;
+            updateStartupStatus('error', message);
+            logToGeneralArea(`n8n error: ${message}`);
+        });
+
+        // --- Status Management ---
+        function updateStartupStatus(stage, message) {
+            // Update general log
+            logToGeneralArea(`n8n status: ${stage} - ${message}`);
+            
+            // Update status dot and text based on stage
+            const stageConfig = {
+                'initializing': { dotClass: 'bg-yellow-500 animate-pulse', text: 'Initializing...', progress: 10 },
+                'starting': { dotClass: 'bg-yellow-500 animate-pulse', text: 'Starting n8n...', progress: 20 },
+                'verifying': { dotClass: 'bg-yellow-500 animate-pulse', text: 'Verifying n8n...', progress: 60 },
+                'waiting': { dotClass: 'bg-yellow-500 animate-pulse', text: 'Waiting for n8n...', progress: 70 },
+                'ready': { dotClass: 'bg-green-500', text: 'n8n Ready', progress: 100 },
+                'error': { dotClass: 'bg-red-500', text: 'Error', progress: 0 },
+                'stopped': { dotClass: 'bg-gray-500', text: 'Stopped', progress: 0 },
+                'failed': { dotClass: 'bg-red-500', text: 'Failed', progress: 0 }
+            };
+            
+            // Get config for current stage or use defaults
+            const config = stageConfig[stage] || stageConfig.initializing;
+            
+            // Update status dot class (remove all possible classes first)
+            statusDot.className = 'w-3 h-3 rounded-full ' + config.dotClass;
+            
+            // Update status text
+            statusText.textContent = config.text;
+            
+            // Show detailed message if provided
+            if (message && stage !== 'ready' && stage !== 'error') {
+                startupDetail.classList.remove('hidden');
+                startupStage.textContent = message;
+            } else {
+                startupDetail.classList.add('hidden');
+            }
+            
+            // Update progress bar
+            progressBar.style.width = `${config.progress}%`;
+            
+            // Enable/disable buttons based on status
+            launchEditorButton.disabled = stage !== 'ready';
+            
+            // When n8n is ready, hide the skip button
+            if (stage === 'ready') {
+                skipApiKeysButton.classList.add('hidden');
+            }
+        }
+
+        // Skip API Keys Button Click Handler
+        skipApiKeysButton.addEventListener('click', () => {
+            logToGeneralArea('Skipping API setup and starting n8n directly');
+            updateStartupStatus('initializing', 'Starting n8n without API keys...');
+            // Send message to main process to skip API setup
+            // This is usually done through IPC
+            window.electron.skipApiSetup();
+        });
+
+        // --- Initialize ---
+        initializeApp();
+
+    </script>
+</body>
+</html> 

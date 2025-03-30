@@ -1,0 +1,79 @@
+{
+  "name": "n8n-electron-wrapper",
+  "version": "1.0.0",
+  "description": "Electron wrapper for n8n",
+  "main": "main.js",
+  "scripts": {
+    "start": "node scripts/reset-config.js && ./run-with-venv.sh electron .",
+    "build": "./run-with-venv.sh electron-builder --mac",
+    "rebuild-deps": "./run-with-venv.sh electron-builder install-app-deps",
+    "install-deps": "./run-with-venv.sh npm install",
+    "test": "node scripts/test-n8n-process.js",
+    "test:watch": "node scripts/test-n8n-process.js --watch",
+    "test:debug": "DEBUG=n8n:* node scripts/test-n8n-process.js",
+    "monitor": "node scripts/monitor-n8n.js",
+    "monitor:dev": "NODE_ENV=development node scripts/monitor-n8n.js",
+    "monitor:debug": "DEBUG=n8n:* node scripts/monitor-n8n.js",
+    "debug:all": "DEBUG=n8n:* npm run test && npm run monitor:debug",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "keywords": [
+    "n8n",
+    "electron"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "debug": "^4.3.4",
+    "electron-log": "^5.1.2",
+    "keytar": "^7.9.0",
+    "sqlite3": "^5.1.7",
+    "dockerode": "^4.0.0"
+  },
+  "devDependencies": {
+    "electron": "^29.4.6",
+    "electron-builder": "^24.13.3",
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.5"
+  },
+  "build": {
+    "appId": "com.example.n8nwrapper",
+    "productName": "n8n Desktop Wrapper",
+    "npmRebuild": false,
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "styles.css",
+      "setup.html",
+      "dashboard.html",
+      "node_modules/**/*",
+      "run-with-venv.sh",
+      "setup-venv.sh",
+      "README.md",
+      "scripts/reset-config.js"
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns"
+    },
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "extraResources": [],
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/keytar/**/*",
+      "**/node_modules/sqlite3/**/*"
+    ]
+  },
+  "engines": {
+    "node": ">=20.11.1",
+    "npm": ">=10.2.4"
+  }
+}

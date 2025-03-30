@@ -1,0 +1,97 @@
+/* General styles */
+html { font-family: 'Inter', sans-serif; }
+@supports (font-variation-settings: normal) {
+    html { font-family: 'Inter var', sans-serif; }
+}
+body {
+    background-color: #f7fafc; /* Default light background */
+    color: #1a202c; /* Default light text */
+    height: 100vh;
+    overflow: hidden;
+}
+body.dark {
+    background-color: #1a202c; /* Default dark background */
+    color: #f7fafc; /* Default dark text */
+}
+
+/* Simple scrollbar styling */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #2d3748; } /* gray-800 */
+::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; } /* gray-600 */
+::-webkit-scrollbar-thumb:hover { background: #718096; } /* gray-500 */
+
+/* Sidebar icon utility */
+.sidebar-icon { width: 1.25rem; height: 1.25rem; margin-right: 0.75rem; }
+
+/* Style for the setup iframe */
+#setup-frame {
+    width: 100%;
+    border: none;
+    display: block; /* Ensure block behavior */
+    min-height: 450px; /* Set a reasonable min-height */
+    max-height: 80vh; /* Keep max-height constraint */
+}
+
+/* Style for the n8n editor iframe */
+#n8n-iframe {
+    width: 100%;
+    height: calc(100% - 40px); /* Fill available space minus header/button */
+    border-width: 1px;
+    border-color: #d2d6dc; /* Default light border */
+    border-radius: 0.25rem;
+}
+body.dark #n8n-iframe {
+    border-color: #4a5568; /* Dark border */
+}
+
+/* Style for setup.html iframe content */
+body.setup-body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  width: 100%;
+  overflow: auto;
+}
+.setup-container-wrapper {
+  padding: 1.5rem;
+}
+
+/* Style for the progress bar inside progress-container */
+#n8n-progress-bar {
+    height: 100%; /* Should be 100% of parent */
+    width: 0%; /* Initial width */
+    transition: width 0.3s ease-in-out;
+    background-color: #4299e1; /* blue-500 */
+    border-radius: 9999px;
+}
+
+/* Styles from index.html (potentially duplicate if index.html is unused) */
+/* Verify if these are needed or if index.html is legacy */
+/* If index.html is used, these ensure consistency */
+html {
+    font-family: 'Inter', sans-serif; 
+}
+@supports (font-variation-settings: normal) {
+    html {
+        font-family: 'Inter var', sans-serif;
+    }
+}
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #2d3748; /* gray-800 */
+}
+::-webkit-scrollbar-thumb {
+    background: #4a5568; /* gray-600 */
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #718096; /* gray-500 */
+}
+.sidebar-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-right: 0.75rem;
+} 

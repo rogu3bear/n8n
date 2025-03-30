@@ -1,0 +1,8 @@
+{
+  "name": "n8n-isolated",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "n8n": "1.28.0"
+  }
+}

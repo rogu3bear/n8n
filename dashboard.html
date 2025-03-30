@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Updated CSP for better iframe support and resource loading -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://rsms.me; font-src 'self' https://rsms.me; connect-src 'self' http://localhost:*; img-src 'self' data:; frame-src 'self';">
+    <title>n8n Desktop</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="renderer.js" defer></script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 h-screen overflow-hidden flex flex-col">
+
+    <!-- Optional Setup Modal -->
+    <div id="setup-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-0 overflow-hidden">
+            <iframe id="setup-frame" src="setup.html" title="n8n Setup Configuration"></iframe>
+        </div>
+    </div>
+
+    <!-- Main Application Structure -->
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white dark:bg-gray-800 shadow-md flex flex-col justify-between">
+            <div>
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h1 class="text-xl font-bold text-center">n8n Desktop</h1>
+                    <div class="mt-2 text-center text-xs text-gray-500 dark:text-gray-400">v1.0.0</div>
+                </div>
+                <nav class="mt-4">
+                    <ul>
+                        <li><a href="#dashboard" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded mx-2 nav-link" data-section="dashboard">
+                            <!-- Placeholder for SVG icon --> <span class="sidebar-icon">📊</span> Dashboard
+                        </a></li>
+                        <li><a href="#workflows" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded mx-2 nav-link" data-section="workflows">
+                            <!-- Placeholder for SVG icon --> <span class="sidebar-icon">⚙️</span> Workflows
+                        </a></li>
+                        <li><a href="#agents" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded mx-2 nav-link" data-section="agents">
+                            <!-- Placeholder for SVG icon --> <span class="sidebar-icon">🤖</span> Agent Templates
+                        </a></li>
+                         <li><a href="#logs" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded mx-2 nav-link" data-section="logs">
+                             <!-- Placeholder for SVG icon --> <span class="sidebar-icon">📜</span> Logs
+                         </a></li>
+                         <li><a href="#resources" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded mx-2 nav-link" data-section="resources">
+                             <!-- Placeholder for SVG icon --> <span class="sidebar-icon">📚</span> Resources
+                         </a></li>
+                    </ul>
+                </nav>
+            </div>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+                 <button id="launch-editor" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition duration-150 ease-in-out flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                     <!-- Placeholder for SVG icon --> <span class="mr-2">��</span> Launch Full Editor
+                 </button>
+                 <div class="mt-4 flex justify-between items-center text-sm">
+                     <span id="theme-toggle-label">Toggle Theme</span>
+                     <button id="theme-toggle" class="p-1 rounded bg-gray-200 dark:bg-gray-700">
+                        <span id="theme-icon">🌙</span> <!-- Icon changes with theme -->
+                     </button>
+                 </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
+                <h2 id="section-title" class="text-lg font-semibold">Dashboard</h2>
+                <div class="flex items-center space-x-4">
+                    <div id="status-indicator" class="flex items-center space-x-2">
+                        <span id="status-dot" class="w-3 h-3 rounded-full bg-yellow-500 animate-pulse"></span>
+                        <span id="status-text" class="text-sm text-gray-600 dark:text-gray-400">Initializing...</span>
+                    </div>
+                    <!-- Progress Bar (optional, can be shown overlay or here) -->
+                     <div id="progress-container" class="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2 hidden">
+                         <div id="n8n-progress-bar" class="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-linear"></div>
+                     </div>
+                     <span class="text-xs text-gray-500 dark:text-gray-400">ENV: <span id="env-indicator">dev</span></span>
+                     <button id="settings-button" title="Settings (Not Implemented)" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                         <!-- Settings Icon SVG -->
+                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.004.827c-.292.24-.437.613-.43.992a6.759 6.759 0 0 1 0 1.903c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.759 6.759 0 0 1 0-1.903c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.217.456c.355.133.75.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.213-1.28Z" />
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                         </svg>
+                     </button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="flex-1 overflow-y-auto p-6 bg-gray-100 dark:bg-gray-900">
+                <!-- Sections (only one visible at a time) -->
+                <section id="dashboard-section" class="content-section">
+                    <h3 class="text-xl font-semibold mb-4">Dashboard Overview</h3>
+                    
+                    <!-- Status cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-500 dark:text-blue-300 mr-4">
+                                    <!-- Workflows icon -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Active Workflows</p>
+                                    <p class="text-lg font-semibold" id="active-workflows-count">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-green-100 dark:bg-green-900 text-green-500 dark:text-green-300 mr-4">
+                                    <!-- Executions icon -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Executions Today</p>
+                                    <p class="text-lg font-semibold" id="executions-count">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-500 dark:text-purple-300 mr-4">
+                                    <!-- Status icon -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23-.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21a48.25 48.25 0 0 1-8.135-.687c-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">System Status</p>
+                                    <p class="text-lg font-semibold" id="system-status">Operational</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick actions -->
+                    <h4 class="text-lg font-medium mb-3">Quick Actions</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <button class="quick-action flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" data-action="create-workflow">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 mb-2 text-blue-500">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            <span>New Workflow</span>
+                        </button>
+                        <button class="quick-action flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" data-action="import-workflow">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 mb-2 text-green-500">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 0 0-2.25 2.25v9a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H15M9 12l3 3m0 0 3-3m-3 3V2.25" />
+                            </svg>
+                            <span>Import</span>
+                        </button>
+                        <button class="quick-action flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" data-action="browse-templates">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 mb-2 text-purple-500">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                            </svg>
+                            <span>Templates</span>
+                        </button>
+                        <button class="quick-action flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" data-action="view-logs">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 mb-2 text-amber-500">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
+                            </svg>
+                            <span>View Logs</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Recent executions -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-lg font-medium">Recent Executions</h4>
+                            <button id="refresh-executions" class="text-xs bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 rounded">Refresh</button>
+                        </div>
+                        <div id="recent-executions" class="text-sm">
+                            <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                                <div class="flex items-center">
+                                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2" title="Success"></span>
+                                    <span>workflow1</span>
+                                </div>
+                                <div class="text-gray-500 dark:text-gray-400">2 minutes ago</div>
+                            </div>
+                            <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                                <div class="flex items-center">
+                                    <span class="w-2 h-2 bg-red-500 rounded-full mr-2" title="Failed"></span>
+                                    <span>workflow2</span>
+                                </div>
+                                <div class="text-gray-500 dark:text-gray-400">15 minutes ago</div>
+                            </div>
+                            <div class="flex justify-between items-center py-2">
+                                <div class="flex items-center">
+                                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2" title="Success"></span>
+                                    <span>workflow1</span>
+                                </div>
+                                <div class="text-gray-500 dark:text-gray-400">1 hour ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="workflows-section" class="content-section hidden">
+                    <h3 class="text-xl font-semibold mb-4">Workflows</h3>
+                     <div class="mb-4 flex justify-between items-center">
+                         <input type="text" id="workflow-search" placeholder="Search workflows..." class="p-2 border rounded bg-white dark:bg-gray-700 dark:border-gray-600">
+                         <div>
+                             <button id="import-workflow" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded mr-2">Import</button>
+                             <button id="create-workflow" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">Create New</button>
+                         </div>
+                     </div>
+                    <div id="workflow-list">
+                        <!-- Workflow items will be loaded here -->
+                        <p class="text-gray-500">Loading workflows...</p>
+                    </div>
+                </section>
+
+                <section id="agents-section" class="content-section hidden">
+                    <h3 class="text-xl font-semibold mb-4">Agent Templates</h3>
+                    <p class="mb-4">Select an agent template to get started quickly with pre-configured workflows.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="agent-templates-container">
+                        <!-- Template cards will be dynamically populated -->
+                        <div class="bg-white dark:bg-gray-800 p-4 rounded shadow-md">
+                            <div class="text-blue-600 dark:text-blue-400 text-lg font-medium">API Integration</div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 my-2">Connect to external APIs and process data automatically.</p>
+                            <div class="mt-4 flex justify-end space-x-2">
+                                <button class="template-action bg-blue-600 hover:bg-blue-700 text-white text-xs py-1 px-2 rounded" data-template="api-integration">Use Template</button>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-4 rounded shadow-md">
+                            <div class="text-blue-600 dark:text-blue-400 text-lg font-medium">Data Transformation</div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 my-2">Extract, transform, and load data between systems.</p>
+                            <div class="mt-4 flex justify-end space-x-2">
+                                <button class="template-action bg-blue-600 hover:bg-blue-700 text-white text-xs py-1 px-2 rounded" data-template="data-transformation">Use Template</button>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-4 rounded shadow-md">
+                            <div class="text-blue-600 dark:text-blue-400 text-lg font-medium">Notifications</div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 my-2">Send alerts via email, Slack, or other channels.</p>
+                            <div class="mt-4 flex justify-end space-x-2">
+                                <button class="template-action bg-blue-600 hover:bg-blue-700 text-white text-xs py-1 px-2 rounded" data-template="notifications">Use Template</button>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-4 rounded shadow-md">
+                            <div class="text-blue-600 dark:text-blue-400 text-lg font-medium">AI Assistant</div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 my-2">Integrate with AI models for text and image generation.</p>
+                            <div class="mt-4 flex justify-end space-x-2">
+                                <button class="template-action bg-blue-600 hover:bg-blue-700 text-white text-xs py-1 px-2 rounded" data-template="ai-assistant">Use Template</button>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-4 rounded shadow-md">
+                            <div class="text-blue-600 dark:text-blue-400 text-lg font-medium">Scheduling</div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 my-2">Create time-based automated workflows.</p>
+                            <div class="mt-4 flex justify-end space-x-2">
+                                <button class="template-action bg-blue-600 hover:bg-blue-700 text-white text-xs py-1 px-2 rounded" data-template="scheduling">Use Template</button>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-4 rounded shadow-md">
+                            <div class="text-blue-600 dark:text-blue-400 text-lg font-medium">Custom Template</div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 my-2">Create your own custom workflow template.</p>
+                            <div class="mt-4 flex justify-end space-x-2">
+                                <button class="template-action bg-blue-600 hover:bg-blue-700 text-white text-xs py-1 px-2 rounded" data-template="custom">Create</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="logs-section" class="content-section hidden">
+                    <h3 class="text-xl font-semibold mb-4">Execution & System Logs</h3>
+                    <div class="flex mb-4 gap-2">
+                        <button id="refresh-logs" class="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-sm">Refresh</button>
+                        <button id="clear-logs" class="bg-gray-600 hover:bg-gray-700 text-white py-1 px-3 rounded text-sm">Clear Log</button>
+                    </div>
+                    <div id="n8n-log-console" class="bg-gray-900 text-green-400 p-4 rounded font-mono text-sm h-96 overflow-y-auto whitespace-pre-wrap">
+                        Waiting for log entries...
+                    </div>
+                </section>
+
+                <!-- New Resource Links Section -->
+                <section id="resources-section" class="content-section hidden">
+                    <h3 class="text-xl font-semibold mb-4">n8n Resources</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <h4 class="text-lg font-medium text-blue-600 dark:text-blue-400 mb-2">Documentation</h4>
+                            <p class="mb-4 text-gray-600 dark:text-gray-300">Comprehensive guides and reference for using n8n.</p>
+                            <ul class="space-y-2 mb-4">
+                                <li><a href="https://docs.n8n.io/try-it-out/" class="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">Quick Start Guide</a></li>
+                                <li><a href="https://docs.n8n.io/integrations/" class="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">Available Integrations</a></li>
+                                <li><a href="https://docs.n8n.io/advanced-ai/" class="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">AI Features</a></li>
+                            </ul>
+                            <a href="https://docs.n8n.io" class="inline-block bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-sm" target="_blank" rel="noopener noreferrer">Browse All Docs</a>
+                        </div>
+                        
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <h4 class="text-lg font-medium text-purple-600 dark:text-purple-400 mb-2">Community & Support</h4>
+                            <p class="mb-4 text-gray-600 dark:text-gray-300">Get help from the n8n community and team.</p>
+                            <ul class="space-y-2 mb-4">
+                                <li><a href="https://community.n8n.io/" class="text-purple-600 dark:text-purple-400 hover:underline" target="_blank" rel="noopener noreferrer">Community Forum</a></li>
+                                <li><a href="https://github.com/n8n-io/n8n/issues" class="text-purple-600 dark:text-purple-400 hover:underline" target="_blank" rel="noopener noreferrer">GitHub Issues</a></li>
+                                <li><a href="https://docs.n8n.io/help-community/contributing/" class="text-purple-600 dark:text-purple-400 hover:underline" target="_blank" rel="noopener noreferrer">Contributing Guide</a></li>
+                            </ul>
+                            <a href="https://n8n.io/contact" class="inline-block bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded text-sm" target="_blank" rel="noopener noreferrer">Contact Support</a>
+                        </div>
+                        
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <h4 class="text-lg font-medium text-green-600 dark:text-green-400 mb-2">Learning Resources</h4>
+                            <p class="mb-4 text-gray-600 dark:text-gray-300">Tutorials and courses to master workflow automation.</p>
+                            <ul class="space-y-2 mb-4">
+                                <li><a href="https://n8n.io/workflows/" class="text-green-600 dark:text-green-400 hover:underline" target="_blank" rel="noopener noreferrer">Workflow Templates</a></li>
+                                <li><a href="https://www.youtube.com/c/n8n" class="text-green-600 dark:text-green-400 hover:underline" target="_blank" rel="noopener noreferrer">Tutorial Videos</a></li>
+                                <li><a href="https://blog.n8n.io/" class="text-green-600 dark:text-green-400 hover:underline" target="_blank" rel="noopener noreferrer">n8n Blog</a></li>
+                            </ul>
+                            <a href="https://academy.n8n.io/" class="inline-block bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded text-sm" target="_blank" rel="noopener noreferrer">n8n Academy</a>
+                        </div>
+                        
+                        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                            <h4 class="text-lg font-medium text-amber-600 dark:text-amber-400 mb-2">Tools & Utilities</h4>
+                            <p class="mb-4 text-gray-600 dark:text-gray-300">Helpful tools for working with n8n workflows.</p>
+                            <ul class="space-y-2 mb-4">
+                                <li><a href="http://localhost:5678" class="text-amber-600 dark:text-amber-400 hover:underline" target="_blank" rel="noopener noreferrer">Local n8n Web Interface</a></li>
+                                <li><a href="https://n8n.io/integrations/" class="text-amber-600 dark:text-amber-400 hover:underline" target="_blank" rel="noopener noreferrer">Available Integrations</a></li>
+                                <li><a href="https://n8n.io/settings" class="text-amber-600 dark:text-amber-400 hover:underline" target="_blank" rel="noopener noreferrer">Settings</a></li>
+                            </ul>
+                            <button id="open-data-folder" class="inline-block bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded text-sm">Open Data Folder</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- n8n Editor iframe container -->
+                <section id="editor-section" class="content-section hidden h-full">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-xl font-semibold">n8n Editor</h3>
+                        <button id="back-to-dashboard" class="bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded text-sm">Back to Dashboard</button>
+                    </div>
+                    <iframe id="n8n-iframe" src="about:blank" title="n8n Workflow Editor"></iframe>
+                </section>
+
+                <!-- General Log/Status Area (maybe for app-level logs?) -->
+                <div id="general-log-area" class="mt-4 text-xs text-gray-600 dark:text-gray-400 h-20 overflow-y-auto border-t border-gray-200 dark:border-gray-700 pt-2">
+                    App status messages will appear here...
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading Overlay (Improved) -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white dark:bg-gray-900 flex flex-col justify-center items-center z-50">
+        <div class="text-center">
+            <div class="mb-6">
+                <svg class="animate-spin h-12 w-12 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+            <h3 class="text-2xl font-bold mb-2">Initializing n8n</h3>
+            <p id="loading-message" class="text-gray-600 dark:text-gray-400 mb-4">Setting up your environment...</p>
+            <div class="w-64 h-2 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto">
+                <div id="progress-bar" class="h-full bg-blue-500 rounded-full" style="width: 5%;"></div>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-4">First startup may take a minute or two.</p>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50"></div>
+
+    <script>
+        // Use the secure api bridge instead of direct ipcRenderer
+        // const { ipcRenderer } = require('electron');
+
+        // --- DOM Elements ---
+        const setupModal = document.getElementById('setup-modal');
+        const setupFrame = document.getElementById('setup-frame');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const contentSections = document.querySelectorAll('.content-section');
+        const sectionTitle = document.getElementById('section-title');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const launchEditorButton = document.getElementById('launch-editor');
+        const n8nIframe = document.getElementById('n8n-iframe');
+        const backToDashboardButton = document.getElementById('back-to-dashboard');
+        const generalLogArea = document.getElementById('general-log-area');
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const workflowListDiv = document.getElementById('workflow-list');
+        const importWorkflowButton = document.getElementById('import-workflow');
+        const createWorkflowButton = document.getElementById('create-workflow');
+        const workflowSearchInput = document.getElementById('workflow-search');
+
+        // --- State ---
+        let activePort = null;
+        let n8nIsReady = false;
+        let currentTheme = localStorage.getItem('theme') || 'light';
+
+        // --- Initialization ---
+        function initializeApp() {
+            logToGeneralArea('App Initializing...');
+            // Apply initial theme
+            applyTheme(currentTheme);
+            // Add navigation logic
+            setupNavigation();
+            // Add theme toggle logic
+            setupThemeToggle();
+            // Show Dashboard by default
+            showSection('dashboard');
+            // Request workflows when n8n is ready
+            window.api.getWorkflows();
+            
+            // Setup iframe message handling
+            setupIframeMessageHandling();
+        }
+
+        // Handle messages from iframes for resizing and theme sync
+        function setupIframeMessageHandling() {
+            window.addEventListener('message', (event) => {
+                try {
+                    const message = event.data;
+                    
+                    // Handle iframe height adjustment
+                    if (message && message.type === 'iframe-height') {
+                        const iframe = document.getElementById('setup-frame');
+                        if (iframe) {
+                            // Add a small buffer to avoid scrollbars
+                            iframe.style.height = `${message.height + 20}px`;
+                        }
+                    }
+                    
+                    // Handle theme synchronization
+                    if (message && message.type === 'theme-change') {
+                        const newTheme = message.theme;
+                        if (newTheme && (newTheme === 'light' || newTheme === 'dark')) {
+                            applyTheme(newTheme);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error processing iframe message:', error);
+                }
+            });
+        }
+
+        // --- Theme Handling ---
+        function applyTheme(theme) {
+             if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeIcon.textContent = '☀️';
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeIcon.textContent = '🌙';
+            }
+            localStorage.setItem('theme', theme);
+            currentTheme = theme;
+        }
+
+         function setupThemeToggle() {
+            themeToggle.addEventListener('click', () => {
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                applyTheme(newTheme);
+            });
+        }
+
+        // --- Navigation ---
+        function setupNavigation() {
+            navLinks.forEach(link => {
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const sectionId = link.getAttribute('data-section');
+                    showSection(sectionId);
+                    // Update URL hash for visual feedback (optional)
+                    // window.location.hash = link.getAttribute('href');
+                });
+            });
+
+            launchEditorButton.addEventListener('click', () => {
+                if (n8nIsReady && activePort) {
+                    const editorUrl = `http://localhost:${activePort}`;
+                    logToGeneralArea(`Launching editor at ${editorUrl}`);
+                    n8nIframe.src = editorUrl;
+                    showSection('editor');
+                } else {
+                     logToGeneralArea('Cannot launch editor: n8n is not ready.');
+                }
+            });
+
+            backToDashboardButton.addEventListener('click', () => {
+                 n8nIframe.src = 'about:blank'; // Clear iframe src
+                 showSection('dashboard');
+            });
+        }
+
+        function showSection(sectionId) {
+            contentSections.forEach(section => {
+                if (section.id === `${sectionId}-section`) {
+                    section.classList.remove('hidden');
+                } else {
+                    section.classList.add('hidden');
+                }
+            });
+            // Update header title
+            const activeLink = document.querySelector(`.nav-link[data-section="${sectionId}"]`);
+            sectionTitle.textContent = activeLink ? activeLink.textContent.trim() : 'n8n Desktop';
+
+            // Highlight active link (optional)
+             navLinks.forEach(link => link.classList.remove('bg-gray-200', 'dark:bg-gray-700'));
+             if (activeLink) {
+                 activeLink.classList.add('bg-gray-200', 'dark:bg-gray-700');
+             }
+        }
+
+        // --- Logging ---
+        function logToGeneralArea(message) {
+            console.log(`[App Log] ${message}`); // Also log to console
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            // Prepend new messages
+            if (generalLogArea.firstChild && generalLogArea.firstChild.textContent === 'App status messages will appear here...') {
+                generalLogArea.innerHTML = ''; // Clear placeholder
+            }
+            generalLogArea.insertBefore(logEntry, generalLogArea.firstChild);
+            // Limit log entries (optional)
+            // while (generalLogArea.childElementCount > 50) {
+            //    generalLogArea.removeChild(generalLogArea.lastChild);
+            // }
+        }
+
+        // --- IPC Event Listeners ---
+        function setupIpcListeners() {
+            // Setup n8n initialization info
+            window.api.onN8nInitInfo((event, data) => {
+                logToGeneralArea(`n8n is ready on port: ${data.port}`);
+                activePort = data.port;
+                n8nIsReady = true;
+                updateN8nStatusUI('ready');
+                launchEditorButton.disabled = false;
+                // Fetch workflows now that n8n is ready
+                window.api.getWorkflows();
+                // Set iframe src if in editor section
+                if (getCurrentSection() === 'editor') {
+                    n8nIframe.src = `http://localhost:${activePort}`;
+                }
+            });
+
+            // Setup status updates
+            window.api.onN8nStatusUpdate((event, data) => {
+                logToGeneralArea(`n8n status update: ${data.stage}`);
+                updateN8nStatusUI(data.stage);
+                if (data.stage === 'spawning' && data.port) {
+                    activePort = data.port;
+                }
+            });
+
+            // Setup error handling
+            window.api.onN8nInitError((event, data) => {
+                logToGeneralArea(`Error initializing n8n: ${data.message}`);
+                updateN8nStatusUI('error');
+                showError(data.message);
+            });
+
+            // Setup workflow data reception
+            window.api.onWorkflowsReceived((event, data) => {
+                logToGeneralArea(`Received ${data.workflows.length} workflows`);
+                displayWorkflows(data.workflows);
+                updateDashboardStats(data.workflows);
+            });
+
+            // Setup optional setup prompt
+            window.api.showOptionalSetupPrompt(() => {
+                logToGeneralArea('First run detected, showing setup modal');
+                setupModal.classList.remove('hidden');
+            });
+
+            // Setup n8n log appending
+            window.api.appendToN8nLog((event, data) => {
+                if (data && data.message) {
+                    appendToN8nLog(data.message);
+                }
+            });
+        }
+
+        // --- Setup Event Listeners ---
+        function setupWorkflowActions() {
+            importWorkflowButton.addEventListener('click', async () => {
+                logToGeneralArea('Import button clicked.');
+                importWorkflowButton.disabled = true;
+                try {
+                    const result = await window.api.importWorkflow();
+                    if (result.success) {
+                        logToGeneralArea(result.message);
+                        fetchAndDisplayWorkflows(); // Refresh list after import
+                    } else {
+                        logToGeneralArea(`Import failed: ${result.message}`);
+                        if (result.message !== 'Import cancelled.') {
+                            alert(`Import failed: ${result.message}`);
+                        }
+                    }
+                } catch (error) {
+                    logToGeneralArea(`Error during import: ${error.message}`);
+                    alert(`Error during import: ${error.message}`);
+                } finally {
+                    importWorkflowButton.disabled = false;
+                }
+            });
+
+            createWorkflowButton.addEventListener('click', () => {
+                logToGeneralArea('Create New button clicked. Launching editor...');
+                // Simply launch the editor, user creates workflow there
+                 if (n8nIsReady && activePort) {
+                     const editorUrl = `http://localhost:${activePort}`;
+                     n8nIframe.src = editorUrl;
+                     showSection('editor');
+                 } else {
+                     logToGeneralArea('Cannot launch editor: n8n is not ready.');
+                 }
+             });
+
+            // Add debounced search
+            let searchTimeout;
+            workflowSearchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    logToGeneralArea(`Searching workflows for: ${workflowSearchInput.value}`);
+                    // Re-fetch and filter - could optimize later to filter existing data
+                    fetchAndDisplayWorkflows(); 
+                }, 300); // Debounce time in ms
+            });
+        }
+
+        // Function to fetch and display workflows
+        function fetchAndDisplayWorkflows() {
+            // Clear current list
+            workflowListDiv.innerHTML = '<div class="text-center py-8 text-gray-500 dark:text-gray-400">Loading workflows...</div>';
+            // Request workflows from main process
+            window.api.getWorkflows();
+        }
+
+        // Add event handlers for workflow actions
+        function addWorkflowEventHandlers() {
+            // Capture all workflow button clicks and delegate based on action
+            workflowListDiv.addEventListener('click', (event) => {
+                const workflowItem = event.target.closest('.workflow-item');
+                if (!workflowItem) return;
+
+                const workflowId = workflowItem.dataset.id;
+                
+                // Handle active toggle
+                if (event.target.closest('.toggle-active')) {
+                    const isActive = event.target.closest('.toggle-active').checked;
+                    window.api.toggleWorkflowActive(workflowId, isActive);
+                    return;
+                }
+                
+                // Handle run action
+                if (event.target.closest('.run-workflow')) {
+                    window.api.runWorkflow(workflowId);
+                    return;
+                }
+                
+                // Handle delete action
+                if (event.target.closest('.delete-workflow')) {
+                    if (confirm('Are you sure you want to delete this workflow?')) {
+                        window.api.deleteWorkflow(workflowId);
+                    }
+                    return;
+                }
+                
+                // Handle export action
+                if (event.target.closest('.export-workflow')) {
+                    window.api.exportWorkflow(workflowId);
+                    return;
+                }
+                
+                // Handle edit action (whole row click except buttons)
+                if (!event.target.closest('button') && !event.target.closest('input')) {
+                    if (n8nIsReady && activePort) {
+                        n8nIframe.src = `http://localhost:${activePort}/workflow/${workflowId}`;
+                        showSection('editor');
+                    } else {
+                        logToGeneralArea('Cannot launch editor: n8n is not ready.');
+                    }
+                    return;
+                }
+            });
+        }
+
+        // --- Application Start ---
+        // Wait for the DOM to be ready before initializing
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+            setupIpcListeners();
+            setupWorkflowActions();
+            setupQuickActions();
+            addWorkflowEventHandlers();
+            
+            // Add event listeners for other UI interactions
+            backToDashboardButton.addEventListener('click', () => {
+                showSection('dashboard');
+            });
+            
+            launchEditorButton.addEventListener('click', () => {
+                if (n8nIsReady && activePort) {
+                    n8nIframe.src = `http://localhost:${activePort}`;
+                    showSection('editor');
+                } else {
+                    logToGeneralArea('Cannot launch editor: n8n is not ready.');
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

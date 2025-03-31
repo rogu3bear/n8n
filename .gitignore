@@ -169,4 +169,31 @@ SECURITY.md
 docker/
 config/development/
 config/production/
-resources/ 
+resources/
+
+# Environment files
+.env
+.env.*
+!.env.example
+config/*/.env.*
+!config/*/.env.example
+
+# Build and output
+*.min.js
+*.min.css
+*.map
+*.sourcemap
+*.config.js
+*.config.ts
+config/
+biome.jsonc
+codecov.yml
+*.min.js
+*.min.css
+*.map
+*.sourcemap
+*.config.js
+*.config.ts
+config/
+biome.jsonc
+codecov.yml 

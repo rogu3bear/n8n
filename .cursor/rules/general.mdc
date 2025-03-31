@@ -1,0 +1,20 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- You can @ files here
+- You can use markdown but dont have to
+Maintain Node Version Compatibility: Use Node.js 18.18.0 or higher, lock the version with an .nvmrc file, and verify with node -v to ensure dependency compatibility.
+Secure Dependencies: Audit dependencies regularly with npm audit and npx snyk test, fix vulnerabilities with npm audit fix --force, and monitor upstream issues on GitHub.
+Ensure Robust Path Resolution: Use relative paths for imports in the main process (e.g., ../services/excelService), and copy service files to dist/main/services/ during builds to avoid runtime errors.
+Implement Comprehensive Testing: Write Jest tests for all core services and UI interactions, mock external dependencies (e.g., Electron), and aim for 80%+ test coverage, verified with npm test -- --coverage.
+Build for Cross-Platform: Package the app for macOS, Windows, and Linux using Electron Forge, test on each platform, and automate builds with GitHub Actions CI/CD.
+Prioritize User Experience: Design the UI to be intuitive with clear feedback (e.g., success/error messages), validate user inputs (e.g., workflow JSON), and ensure accessibility.
+Log and Monitor Errors: Use electron-log for detailed logging, store logs in ~/.n8n/logs/, and check for errors after runs with cat ~/.n8n/logs/main.log | grep -i error.
+Automate Builds and Releases: Use GitHub Actions to build, test, and package the app on every push, uploading artifacts to GitHub Releases for distribution.
+Document Thoroughly: Keep README.md updated with installation, usage, troubleshooting, and contributing guides to support users and contributors.
+Prepare for Scalability: Structure the codebase modularly (e.g., separate concerns in main.js), ensuring it’s ready for future features like agent integration by mid-April 2025.

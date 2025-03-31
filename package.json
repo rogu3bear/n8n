@@ -2,15 +2,15 @@
   "name": "n8n-electron-wrapper",
   "version": "1.0.0",
   "description": "A secure and efficient Electron wrapper for n8n",
-  "main": "src/core/main.js",
+  "main": "dist/main/main.js",
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
-    "dev": "electron-forge start",
-    "dev:watch": "electron-forge start --watch",
-    "dev:webpack": "webpack --watch",
-    "dev:all": "concurrently \"npm run dev:watch\" \"npm run dev:webpack\"",
+    "dev": "vite",
+    "dev:watch": "vite --watch",
+    "build": "vite build",
+    "build:vite": "vite build",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -19,7 +19,8 @@
     "lint:fix": "eslint . --fix",
     "security-audit": "npm audit",
     "setup:python": "python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt",
-    "clean": "rimraf out node_modules .venv"
+    "clean": "rimraf dist node_modules .venv",
+    "prepare": "husky"
   },
   "engines": {
     "node": ">=18.18.0",
@@ -54,16 +55,11 @@
     "rimraf": "^5.0.5",
     "typescript": "^5.3.3",
     "vite": "^6.2.3",
-    "vue": "^3.4.19",
-    "webpack": "^5.90.1",
-    "webpack-cli": "^5.1.4"
+    "vue": "^3.4.19"
   },
   "dependencies": {
     "electron-squirrel-startup": "^1.0.0",
     "n8n": "^1.84.3"
-  },
-  "husky": {
-    "hooks": {}
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": "eslint --fix",
@@ -98,10 +94,6 @@
         }
       ],
       "plugins": [
-        {
-          "name": "@electron-forge/plugin-auto-unpack-natives",
-          "config": {}
-        },
         {
           "name": "@electron-forge/plugin-vite",
           "config": {

@@ -4,9 +4,9 @@
   "description": "Desktop wrapper for n8n",
   "main": "dist/main/main.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:vite": "vite build",
+    "dev": "vite --config build/vite.config.ts",
+    "build": "vite build --config build/vite.config.ts",
+    "build:vite": "vite build --config build/vite.config.ts",
     "make": "electron-forge make",
     "start": "electron-forge start",
     "package": "electron-forge package",

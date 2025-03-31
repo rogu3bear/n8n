@@ -1,18 +1,103 @@
-const { logger } = require('./logger');
+const { logger } = require('../utils/logger');
 const { EventEmitter } = require('events');
 const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
+
+// Safe version of os.homedir
+function getHomeDir() {
+  try {
+    if (typeof os.homedir === 'function') {
+      return os.homedir();
+    } else {
+      // Fallback for testing environments
+      return process.env.HOME || process.env.USERPROFILE || '/tmp';
+    }
+  } catch (error) {
+    logger.error('Failed to get home directory:', error);
+    return '/tmp';
+  }
+}
 
 class StateManager extends EventEmitter {
   constructor() {
     super();
     this.state = new Map();
     this.observers = new Map();
-    this.stateFilePath = path.join(os.homedir(), '.n8n', 'state.json');
+    this.stateFilePath = path.join(getHomeDir(), '.n8n', 'state.json');
     this.updateQueue = new Map();
     this.batchTimeout = 1000; // 1 second
     this.setupBatchProcessing();
+  }
+
+  setBaseDir(baseDir) {
+    this.stateFilePath = path.join(baseDir, 'state.json');
+  }
+
+  async saveWorkflow(workflow) {
+    try {
+      const workflows = this.state.get('workflows') || new Map();
+      workflows.set(workflow.id, workflow);
+      this.state.set('workflows', workflows);
+      await this.saveState();
+      this.emit('workflow:saved', workflow);
+    } catch (error) {
+      logger.error('Error saving workflow:', error);
+      throw error;
+    }
+  }
+
+  async loadWorkflow(id) {
+    try {
+      const workflows = this.state.get('workflows') || new Map();
+      return workflows.get(id);
+    } catch (error) {
+      logger.error('Error loading workflow:', error);
+      throw error;
+    }
+  }
+
+  async deleteWorkflow(id) {
+    try {
+      const workflows = this.state.get('workflows') || new Map();
+      workflows.delete(id);
+      this.state.set('workflows', workflows);
+      await this.saveState();
+      this.emit('workflow:deleted', id);
+    } catch (error) {
+      logger.error('Error deleting workflow:', error);
+      throw error;
+    }
+  }
+
+  async createWorkflow(workflow) {
+    try {
+      const workflows = this.state.get('workflows') || new Map();
+      const id = Date.now().toString();
+      const newWorkflow = { ...workflow, id };
+      workflows.set(id, newWorkflow);
+      this.state.set('workflows', workflows);
+      await this.saveState();
+      this.emit('workflow:created', newWorkflow);
+      return newWorkflow;
+    } catch (error) {
+      logger.error('Error creating workflow:', error);
+      throw error;
+    }
+  }
+
+  async cleanup() {
+    try {
+      const tempFiles = await fs.readdir(path.dirname(this.stateFilePath));
+      for (const file of tempFiles) {
+        if (file.startsWith('temp.') && file.endsWith('.json')) {
+          await fs.unlink(path.join(path.dirname(this.stateFilePath), file));
+        }
+      }
+    } catch (error) {
+      logger.error('Error cleaning up temporary files:', error);
+      throw error;
+    }
   }
 
   setupBatchProcessing() {
@@ -48,7 +133,13 @@ class StateManager extends EventEmitter {
 
   async notifyObservers(key) {
     const observers = this.observers.get(key) || [];
-    await Promise.all(observers.map(observer => observer(this.state.get(key))));
+    for (const observer of observers) {
+      try {
+        await observer(this.state.get(key));
+      } catch (error) {
+        logger.error(`Error notifying observer for ${key}:`, error);
+      }
+    }
   }
 
   observe(key, callback) {
@@ -72,17 +163,20 @@ class StateManager extends EventEmitter {
 
   async loadState() {
     try {
-      const data = await fs.readFile(this.stateFilePath, 'utf8');
-      const state = JSON.parse(data);
-      
-      // Clear existing state
-      this.state.clear();
-      
-      // Load new state
-      for (const [key, value] of Object.entries(state)) {
-        this.state.set(key, value);
+      // Ensure the directory exists
+      const dir = path.dirname(this.stateFilePath);
+      try {
+        await fs.mkdir(dir, { recursive: true });
+      } catch (err) {
+        // Ignore if directory already exists
+        if (err.code !== 'EEXIST') {
+          throw err;
+        }
       }
       
+      const data = await fs.readFile(this.stateFilePath, 'utf8');
+      const loadedState = JSON.parse(data);
+      this.state = new Map(Object.entries(loadedState));
       logger.info('State loaded successfully');
     } catch (error) {
       if (error.code === 'ENOENT') {
@@ -95,11 +189,22 @@ class StateManager extends EventEmitter {
 
   async saveState() {
     try {
-      const state = Object.fromEntries(this.state);
-      await fs.writeFile(this.stateFilePath, JSON.stringify(state, null, 2));
+      // Ensure the directory exists
+      const dir = path.dirname(this.stateFilePath);
+      try {
+        await fs.mkdir(dir, { recursive: true });
+      } catch (err) {
+        // Ignore if directory already exists
+        if (err.code !== 'EEXIST') {
+          throw err;
+        }
+      }
+      
+      await fs.writeFile(this.stateFilePath, JSON.stringify(Object.fromEntries(this.state), null, 2));
       logger.debug('State saved successfully');
     } catch (error) {
       logger.error('Error saving state:', error);
+      throw error;
     }
   }
 

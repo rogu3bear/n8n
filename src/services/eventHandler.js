@@ -1,5 +1,5 @@
 const EventEmitter = require('events');
-const { logger } = require('./logger');
+const { logger } = require('../utils/logger');
 const { errorHandler } = require('./errorHandler');
 const fs = require('fs').promises;
 const path = require('path');
@@ -37,6 +37,58 @@ class EventHandler extends EventEmitter {
       }
     };
     this.loadState();
+  }
+
+  on(event, listener) {
+    // Check if the listener is already registered
+    const listeners = this.listeners(event);
+    if (listeners.includes(listener)) {
+      return this;
+    }
+    return super.on(event, listener);
+  }
+
+  /**
+   * Override the emit method to safely handle errors from event handlers
+   * @param {string} event The event name to emit
+   * @param  {...any} args The arguments to pass to handlers
+   * @returns {boolean} Whether the event had listeners
+   */
+  async emit(event, ...args) {
+    const handlers = this.listeners(event);
+    
+    if (handlers.length === 0) {
+      return false;
+    }
+    
+    let result = true;
+    
+    // Process each handler individually so one error doesn't stop others
+    for (const handler of handlers) {
+      try {
+        if (typeof handler === 'function') {
+          // Handle both async and sync functions
+          const handlerResult = handler(...args);
+          if (handlerResult instanceof Promise) {
+            await handlerResult;
+          }
+        }
+      } catch (error) {
+        result = false;
+        logger.error(`Error in event handler for '${event}':`, error);
+        
+        // Emit error event without causing loops
+        if (event !== 'error') {
+          try {
+            EventEmitter.prototype.emit.call(this, 'error', error);
+          } catch (err) {
+            logger.error('Error while emitting error event:', err);
+          }
+        }
+      }
+    }
+    
+    return result;
   }
 
   async loadState() {

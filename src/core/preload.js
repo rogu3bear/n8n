@@ -186,7 +186,7 @@ contextBridge.exposeInMainWorld(
         runWorkflow: (id) => safeInvoke('workflow-action', { action: 'run', id }),
         deleteWorkflow: (id) => safeInvoke('workflow-action', { action: 'delete', id }),
         exportWorkflow: (id) => safeInvoke('workflow-action', { action: 'export', id }),
-        importWorkflow: () => safeInvoke('import-workflow'),
+        importWorkflow: () => safeInvoke('workflow-action', { action: 'import' }),
         
         // Utility functions
         openDataFolder: () => safeSend('open-data-folder'),

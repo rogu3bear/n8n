@@ -581,24 +581,12 @@
         // --- Setup Event Listeners ---
         function setupWorkflowActions() {
             importWorkflowButton.addEventListener('click', async () => {
-                logToGeneralArea('Import button clicked.');
-                importWorkflowButton.disabled = true;
                 try {
-                    const result = await window.api.importWorkflow();
-                    if (result.success) {
-                        logToGeneralArea(result.message);
-                        fetchAndDisplayWorkflows(); // Refresh list after import
-                    } else {
-                        logToGeneralArea(`Import failed: ${result.message}`);
-                        if (result.message !== 'Import cancelled.') {
-                            alert(`Import failed: ${result.message}`);
-                        }
-                    }
+                    await window.api.importWorkflow();
+                    // Refresh workflow list after import
+                    window.api.getWorkflows();
                 } catch (error) {
-                    logToGeneralArea(`Error during import: ${error.message}`);
-                    alert(`Error during import: ${error.message}`);
-                } finally {
-                    importWorkflowButton.disabled = false;
+                    showError('Failed to import workflow: ' + error.message);
                 }
             });
 

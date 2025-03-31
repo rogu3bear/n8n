@@ -1,7 +1,8 @@
 const fs = require('fs');
+const fsPromises = require('fs').promises || require('fs/promises');
 const path = require('path');
 const os = require('os');
-const { logger } = require('./logger');
+const { logger } = require('../utils/logger');
 const { eventHandler } = require('./eventHandler');
 
 class WindowStateManager {
@@ -18,15 +19,16 @@ class WindowStateManager {
       isVisible: true,
       lastActive: null
     };
+    this.state = { ...this.defaultState };
   }
 
   async ensureDirectoryExists() {
     const n8nDir = path.join(os.homedir(), '.n8n');
     try {
-      await fs.promises.access(n8nDir);
+      await fsPromises.access(n8nDir);
     } catch (error) {
       if (error.code === 'ENOENT') {
-        await fs.promises.mkdir(n8nDir, { recursive: true });
+        await fsPromises.mkdir(n8nDir, { recursive: true });
         logger.info('Created .n8n directory');
       } else {
         throw error;
@@ -37,7 +39,7 @@ class WindowStateManager {
   async loadState() {
     try {
       await this.ensureDirectoryExists();
-      const data = await fs.promises.readFile(this.stateFilePath, 'utf8');
+      const data = await fsPromises.readFile(this.stateFilePath, 'utf8');
       const loadedState = JSON.parse(data);
       
       // Validate and sanitize loaded state
@@ -60,34 +62,55 @@ class WindowStateManager {
   validateState(state) {
     const validatedState = { ...this.defaultState };
     
-    // Validate bounds
-    if (state.bounds) {
-      const { x, y, width, height } = state.bounds;
-      const screen = require('electron').screen.getPrimaryDisplay().workAreaSize;
+    try {
+      // Validate bounds
+      if (state && state.bounds) {
+        const { x, y, width, height } = state.bounds;
+        // Safely get screen dimensions with fallback values
+        let screenWidth = 1920;
+        let screenHeight = 1080;
+        
+        try {
+          const screen = require('electron').screen;
+          if (screen && screen.getPrimaryDisplay) {
+            const { workAreaSize } = screen.getPrimaryDisplay();
+            screenWidth = workAreaSize.width;
+            screenHeight = workAreaSize.height;
+          }
+        } catch (e) {
+          logger.warn('Could not get screen dimensions, using defaults:', e);
+        }
+        
+        // Ensure window is within screen bounds
+        validatedState.bounds = {
+          x: Math.max(0, Math.min(x || 100, screenWidth - (width || 1200))),
+          y: Math.max(0, Math.min(y || 100, screenHeight - (height || 800))),
+          width: Math.min(width || 1200, screenWidth),
+          height: Math.min(height || 800, screenHeight)
+        };
+      }
       
-      // Ensure window is within screen bounds
-      validatedState.bounds = {
-        x: Math.max(0, Math.min(x, screen.width - width)),
-        y: Math.max(0, Math.min(y, screen.height - height)),
-        width: Math.min(width, screen.width),
-        height: Math.min(height, screen.height)
-      };
+      // Validate boolean flags
+      if (state) {
+        validatedState.isMaximized = Boolean(state.isMaximized);
+        validatedState.isVisible = Boolean(state.isVisible);
+        
+        // Validate timestamp
+        validatedState.lastActive = state.lastActive ? new Date(state.lastActive).toISOString() : null;
+      }
+    } catch (error) {
+      logger.error('Error validating window state:', error);
+      // If validation fails, return default state
+      return { ...this.defaultState };
     }
-    
-    // Validate boolean flags
-    validatedState.isMaximized = Boolean(state.isMaximized);
-    validatedState.isVisible = Boolean(state.isVisible);
-    
-    // Validate timestamp
-    validatedState.lastActive = state.lastActive ? new Date(state.lastActive).toISOString() : null;
     
     return validatedState;
   }
 
-  async saveState(state) {
+  async saveState(state = this.state) {
     try {
       await this.ensureDirectoryExists();
-      await fs.promises.writeFile(
+      await fsPromises.writeFile(
         this.stateFilePath,
         JSON.stringify(state, null, 2)
       );
@@ -124,32 +147,43 @@ class WindowStateManager {
     try {
       const state = await this.loadState();
       
-      // Validate screen bounds
-      const { screen } = require('electron');
-      const primaryDisplay = screen.getPrimaryDisplay();
-      const { workArea } = primaryDisplay;
-
-      // Ensure window is within screen bounds
-      const bounds = {
-        x: Math.max(workArea.x, Math.min(state.bounds.x, workArea.x + workArea.width - state.bounds.width)),
-        y: Math.max(workArea.y, Math.min(state.bounds.y, workArea.y + workArea.height - state.bounds.height)),
-        width: Math.min(state.bounds.width, workArea.width),
-        height: Math.min(state.bounds.height, workArea.height)
-      };
-
-      // Apply validated bounds
-      window.setBounds(bounds);
-      
-      // Restore maximized state if it was maximized
-      if (state.isMaximized) {
-        window.maximize();
+      // If window is not provided, just return state but don't apply
+      if (!window) {
+        logger.warn('Window object not provided to recoverWindowState');
+        return true;
       }
+      
+      // Validate screen bounds
+      try {
+        const { screen } = require('electron');
+        const primaryDisplay = screen.getPrimaryDisplay();
+        const { workArea } = primaryDisplay;
 
-      // Restore visibility
-      if (state.isVisible) {
-        window.show();
-      } else {
-        window.hide();
+        // Ensure window is within screen bounds
+        const bounds = {
+          x: Math.max(workArea.x, Math.min(state.bounds.x, workArea.x + workArea.width - state.bounds.width)),
+          y: Math.max(workArea.y, Math.min(state.bounds.y, workArea.y + workArea.height - state.bounds.height)),
+          width: Math.min(state.bounds.width, workArea.width),
+          height: Math.min(state.bounds.height, workArea.height)
+        };
+
+        // Apply validated bounds
+        window.setBounds(bounds);
+        
+        // Restore maximized state if it was maximized
+        if (state.isMaximized) {
+          window.maximize();
+        }
+
+        // Restore visibility
+        if (state.isVisible) {
+          window.show();
+        } else {
+          window.hide();
+        }
+      } catch (error) {
+        logger.error('Error applying window state:', error);
+        // Continue execution even if window methods fail
       }
 
       logger.info('Window state recovered successfully');

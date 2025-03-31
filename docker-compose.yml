@@ -27,5 +27,18 @@ services:
       - n8n_data:/home/node/.n8n
     restart: unless-stopped
 
+  test:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
+    command: npm test
+
 volumes:
   n8n_data: 

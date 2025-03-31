@@ -11,6 +11,7 @@ const net = require('net');
 const nodeNet = require('net'); // Import Node.js net module separately
 const os = require('os'); // Import os module
 const Docker = require('dockerode');
+const { excelService } = require('../services/excelService');
 
 // Constants
 const KEYCHAIN_SERVICE = 'n8n-electron-wrapper';
@@ -667,7 +668,7 @@ function setupIpcHandlers() {
       const [actionData] = data;
       const { action, id } = actionData;
       
-      if (!action || !id) {
+      if (!action) {
         throw new Error('Invalid workflow action parameters');
       }
       
@@ -682,6 +683,9 @@ function setupIpcHandlers() {
         case 'export':
           // Export the workflow
           return await exportWorkflow(id);
+        case 'import':
+          // Import the workflow
+          return await importWorkflow();
         default:
           throw new Error(`Unknown action: ${action}`);
       }
@@ -1007,4 +1011,87 @@ async function stopN8nProcess() {
             }
         });
     });
+}
+
+async function exportWorkflow(id) {
+  try {
+    // Get workflow data from n8n API
+    const response = await fetch(`http://localhost:${activePort}/rest/workflows/${id}`, {
+      headers: {
+        'X-N8N-API-KEY': internalApiKey
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch workflow: ${response.statusText}`);
+    }
+
+    const workflow = await response.json();
+
+    // Export to Excel
+    const buffer = await excelService.exportWorkflow(workflow);
+
+    // Save file dialog
+    const { filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export Workflow',
+      defaultPath: `${workflow.name}.xlsx`,
+      filters: [
+        { name: 'Excel Files', extensions: ['xlsx'] }
+      ]
+    });
+
+    if (filePath) {
+      await fsPromises.writeFile(filePath, buffer);
+      log.info(`Workflow exported successfully to ${filePath}`);
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    log.error('Error exporting workflow:', error);
+    throw error;
+  }
+}
+
+async function importWorkflow() {
+  try {
+    // Open file dialog
+    const { filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: 'Import Workflow',
+      filters: [
+        { name: 'Excel Files', extensions: ['xlsx'] }
+      ],
+      properties: ['openFile']
+    });
+
+    if (!filePaths || filePaths.length === 0) {
+      return false;
+    }
+
+    const filePath = filePaths[0];
+    const fileBuffer = await fsPromises.readFile(filePath);
+
+    // Import from Excel
+    const workflow = await excelService.importWorkflow(fileBuffer);
+
+    // Create workflow in n8n
+    const response = await fetch(`http://localhost:${activePort}/rest/workflows`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-N8N-API-KEY': internalApiKey
+      },
+      body: JSON.stringify(workflow)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to create workflow: ${response.statusText}`);
+    }
+
+    log.info('Workflow imported successfully');
+    return true;
+  } catch (error) {
+    log.error('Error importing workflow:', error);
+    throw error;
+  }
 }

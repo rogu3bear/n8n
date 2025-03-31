@@ -10,6 +10,8 @@ const debug = require('debug')('n8n:main');
 const { spawn } = require('child_process');
 const net = require('net');
 const os = require('os');
+const { excelService } = require('../services/excelService');
+const { exec } = require('child_process');
 
 // Constants
 const APP_NAME = 'n8n';

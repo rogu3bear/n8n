@@ -131,15 +131,27 @@ cat ~/.n8n/logs/main.log
 ### Project Structure
 
 ```
-.
-├── src/
-│   ├── core/           # Main process code
-│   ├── renderer/       # Renderer process code
-│   ├── services/       # Shared services
-│   └── tests/          # Test files
-├── dist/               # Build output
-└── out/                # Package output
+src/
+├── features/           # Feature-based modules
+│   ├── workflows/     # Workflow feature
+│   ├── nodes/        # Node management feature
+│   └── auth/         # Authentication feature
+├── shared/           # Shared resources
+│   ├── components/   # Reusable UI components
+│   ├── hooks/       # Shared React hooks
+│   ├── utils/       # Shared utilities
+│   └── types/       # Shared TypeScript types
+├── core/            # Core application code
+│   ├── config/      # Core configuration
+│   ├── services/    # Core services
+│   └── store/       # State management
+└── infrastructure/  # Infrastructure concerns
+    ├── api/        # API client setup
+    ├── electron/   # Electron-specific code
+    └── testing/    # Test utilities
 ```
+
+Each feature is self-contained with its own components, services, and types. Shared resources are available across all features.
 
 ### Development Scripts
 

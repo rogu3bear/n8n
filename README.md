@@ -1,6 +1,112 @@
-# n8n Desktop Wrapper
+# n8n Electron Wrapper
 
-An Electron wrapper application for running n8n locally as a desktop application.
+This project provides an Electron wrapper for n8n with isolated Python and npm environments for enhanced security.
+
+## Security Features
+
+- **Isolated npm Environment**: All npm operations run in a dedicated Docker container to protect against malicious packages
+- **Isolated Python Environment**: Python dependencies run in a virtual environment
+- **Containerized n8n**: Core n8n service runs in an isolated Docker container
+- **Volume Isolation**: Separate volumes for npm cache and node_modules
+
+## Setup Options
+
+### Option 1: Local Development (Recommended for most users)
+
+1. Install Python 3.11 or later
+2. Install Docker and Docker Compose
+3. Install dependencies:
+   ```bash
+   npm install
+   npm run setup:python
+   ```
+4. Start the application:
+   ```bash
+   npm start
+   ```
+
+### Option 2: Docker-only Development
+
+If you prefer using Docker for all operations:
+
+1. Install Docker and Docker Compose
+2. Build the Docker containers:
+   ```bash
+   npm run docker:build
+   ```
+3. Start the application in Docker:
+   ```bash
+   npm run start:docker
+   ```
+
+## Development
+
+### Local Development
+- `npm start` - Start the application (uses isolated npm)
+- `npm run build` - Build the application (uses isolated npm)
+- `npm test` - Run tests (uses isolated npm)
+- `npm run lint` - Run linter (uses isolated npm)
+- `npm run format` - Format code (uses isolated npm)
+
+### Docker Development
+- `npm run docker:up` - Start Docker containers
+- `npm run docker:down` - Stop Docker containers
+- `npm run docker:rebuild` - Rebuild Docker containers
+- `npm run start:docker` - Start application in Docker
+- `npm run build:docker` - Build application in Docker
+
+## Environment Management
+
+### Python Environment
+- `npm run setup:python` - Set up Python virtual environment
+- `npm run check:python` - Check Python environment
+- `npm run clean:python` - Clean Python environment
+- `npm run rebuild:python` - Rebuild Python environment
+
+### npm Environment
+- `npm run docker:check` - Check if Docker is available
+- `npm run docker:clean` - Clean Docker resources
+- `npm run docker:rebuild` - Rebuild Docker containers
+
+## Requirements
+
+- Node.js >= 20.11.1
+- npm >= 10.2.4
+- Python >= 3.11
+- Docker & Docker Compose
+
+## Security Benefits
+
+1. **npm Isolation**:
+   - Prevents malicious npm packages from affecting your system
+   - Protects against typosquatting attacks
+   - Isolates npm cache and node_modules
+
+2. **Python Isolation**:
+   - Prevents Python package conflicts
+   - Protects system Python installation
+   - Isolates Python dependencies
+
+3. **n8n Isolation**:
+   - Runs n8n in a dedicated container
+   - Protects system resources
+   - Isolates n8n data and configuration
+
+## Troubleshooting
+
+* **Docker-related issues**:
+  - Ensure Docker is running
+  - Check Docker logs: `docker logs n8n-desktop-instance`
+  - Try rebuilding containers: `npm run docker:rebuild`
+
+* **npm issues**:
+  - Clear npm cache: `npm run docker:clean`
+  - Rebuild node_modules: `npm run rebuild-deps`
+  - Check npm logs in container: `docker-compose -f python/docker-compose.yml logs npm-env`
+
+* **Python issues**:
+  - Rebuild virtual environment: `npm run rebuild:python`
+  - Check Python logs: `docker-compose -f python/docker-compose.yml logs python-env`
 
 ## Prerequisites
 
@@ -31,24 +137,6 @@ An Electron wrapper application for running n8n locally as a desktop application
     # Installs Electron, keytar, etc.
     npm run install-deps 
     ```
-
-## Development
-
-Ensure Docker Desktop (or engine) is running before starting the application.
-
-All npm commands are configured to automatically activate the Python virtual environment before execution:
-
-```bash
-# Start the application in development mode
-# This will also start the n8n Docker container
-npm run start
-
-# Build the application for distribution
-npm run build
-
-# Rebuild native dependencies if needed (for keytar, etc.)
-npm run rebuild-deps
-```
 
 ## How It Works
 

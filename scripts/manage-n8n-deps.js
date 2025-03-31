@@ -40,15 +40,21 @@ function setupN8nDependencies() {
     console.log('Installing n8n and its dependencies...');
     execSync('npm install', { cwd: N8N_DIR, stdio: 'inherit' });
     
-    // Create a symlink to the n8n binary
+    // Copy the n8n binary to a local location
     const n8nBinPath = path.join(N8N_DIR, 'node_modules', '.bin', 'n8n');
     const targetBinPath = path.join(DEPS_DIR, 'n8n');
     
     if (fs.existsSync(targetBinPath)) {
-        fs.unlinkSync(targetBinPath);
+        fs.rmSync(targetBinPath, { recursive: true, force: true });
     }
     
-    fs.symlinkSync(n8nBinPath, targetBinPath);
+    // Create a wrapper script instead of symlink
+    const wrapperScript = `#!/bin/sh
+"${n8nBinPath}" "$@"
+`;
+    
+    fs.writeFileSync(targetBinPath, wrapperScript);
+    fs.chmodSync(targetBinPath, '755');
     
     console.log('n8n dependencies setup complete!');
     console.log(`n8n binary available at: ${targetBinPath}`);

@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  python-env:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - python-venv:/app/.venv
+      - npm-cache:/root/.npm
+      - node-modules:/app/node_modules
+    environment:
+      - PYTHONPATH=/app
+      - PATH=/app/.venv/bin:${PATH}
+      - NPM_CONFIG_PREFIX=/app/.npm-global
+    command: ./run-with-venv.sh
+
+  npm-env:
+    image: node:20.11.1-slim
+    volumes:
+      - .:/app
+      - npm-cache:/root/.npm
+      - node-modules:/app/node_modules
+    environment:
+      - NPM_CONFIG_PREFIX=/app/.npm-global
+    working_dir: /app
+    command: tail -f /dev/null
+
+volumes:
+  python-venv:
+  npm-cache:
+  node-modules: 

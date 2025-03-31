@@ -2,22 +2,26 @@
 
 # Script to set up virtual environment for n8n desktop wrapper
 
-VENV_PATH=".venv"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_PATH="$SCRIPT_DIR/.venv"
+ERROR_HANDLER="$SCRIPT_DIR/error_handler.py"
+
+# Function to print error messages
+print_error() {
+    echo "Error: $1" >&2
+    exit 1
+}
 
 # Check if Python is installed
 if ! command -v python3 &> /dev/null; then
-    echo "Error: Python 3 is required but not installed"
-    echo "Please install Python 3 and try again"
-    exit 1
+    print_error "Python 3 is required but not installed\nPlease install Python 3 and try again"
 fi
 
 # Create virtual environment if it doesn't exist
 if [ ! -d "$VENV_PATH" ]; then
     echo "Creating virtual environment in $VENV_PATH..."
-    python3 -m venv "$VENV_PATH"
-    if [ $? -ne 0 ]; then
-        echo "Error: Failed to create virtual environment"
-        exit 1
+    if ! python3 -m venv "$VENV_PATH"; then
+        print_error "Failed to create virtual environment"
     fi
     echo "Virtual environment created successfully"
 else
@@ -29,13 +33,19 @@ source "$VENV_PATH/bin/activate"
 
 # Install Python dependencies for node-gyp
 echo "Installing Python dependencies in virtual environment..."
-pip install --upgrade pip
-pip install setuptools wheel
+if ! pip install --upgrade pip; then
+    print_error "Failed to upgrade pip"
+fi
+
+if ! pip install setuptools wheel; then
+    print_error "Failed to install setuptools and wheel"
+fi
 
 # Create a distutils.cfg file to work around missing distutils
 SITE_PACKAGES=$(python -c "import site; print(site.getsitepackages()[0])")
 DISTUTILS_PATH="${SITE_PACKAGES}/distutils"
 mkdir -p "${DISTUTILS_PATH}"
+
 echo "Creating distutils configuration at ${DISTUTILS_PATH}/distutils.cfg"
 cat > "${DISTUTILS_PATH}/distutils.cfg" << EOL
 [build]
@@ -49,7 +59,14 @@ touch "${DISTUTILS_PATH}/__init__.py"
 
 # Install compatible node-gyp globally
 echo "Installing compatible node-gyp version globally..."
-npm install -g node-gyp@9.4.0
+if ! npm install -g node-gyp@9.4.0; then
+    print_error "Failed to install node-gyp"
+fi
+
+# Run error handler check
+if ! "$VENV_PATH/bin/python" "$ERROR_HANDLER"; then
+    print_error "Virtual environment validation failed"
+fi
 
 echo "✓ Virtual environment setup complete"
 echo "To activate manually: source $VENV_PATH/bin/activate"

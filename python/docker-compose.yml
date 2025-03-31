@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - .:/app
+      - .:/app:ro
       - python-venv:/app/.venv
       - npm-cache:/root/.npm
       - node-modules:/app/node_modules
@@ -15,17 +15,43 @@ services:
       - PATH=/app/.venv/bin:${PATH}
       - NPM_CONFIG_PREFIX=/app/.npm-global
     command: ./run-with-venv.sh
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 5s
+    security_opt:
+      - no-new-privileges:true
+      - no-sandbox:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
 
   npm-env:
     image: node:20.11.1-slim
     volumes:
-      - .:/app
+      - .:/app:ro
       - npm-cache:/root/.npm
       - node-modules:/app/node_modules
     environment:
       - NPM_CONFIG_PREFIX=/app/.npm-global
     working_dir: /app
     command: tail -f /dev/null
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+      start_period: 5s
+    security_opt:
+      - no-new-privileges:true
+      - no-sandbox:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
 
 volumes:
   python-venv:

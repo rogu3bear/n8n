@@ -269,4 +269,35 @@ describe('ExcelService', () => {
             expect(buffer).toBeInstanceOf(Buffer);
         });
     });
+
+    test('createWorkbook creates a new workbook', async () => {
+        const result = await excelService.createWorkbook();
+        expect(result).toBe(true);
+    });
+
+    test('addWorksheet adds a new worksheet', () => {
+        const worksheet = excelService.addWorksheet('Test Sheet');
+        expect(worksheet).toBeDefined();
+    });
+
+    test('getWorksheet retrieves a worksheet', () => {
+        // First add a worksheet
+        excelService.addWorksheet('Test Sheet');
+        
+        // Then retrieve it
+        const worksheet = excelService.getWorksheet('Test Sheet');
+        expect(worksheet).toBeDefined();
+    });
+
+    test('loadWorkbook loads an Excel file', async () => {
+        const filePath = '/path/to/test.xlsx';
+        const result = await excelService.loadWorkbook(filePath);
+        expect(result).toBe(true);
+    });
+
+    test('saveWorkbook saves an Excel file', async () => {
+        const filePath = '/path/to/output.xlsx';
+        const result = await excelService.saveWorkbook(filePath);
+        expect(result).toBe(true);
+    });
 }); 

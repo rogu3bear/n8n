@@ -47,11 +47,11 @@ cd .. || print_error "Failed to return to root directory"
 
 # Launch in test mode
 print_status "Launching application in test mode..."
-./out/n8n-darwin-x64/n8n.app/Contents/MacOS/n8n --test-mode || print_error "Test mode failed"
+./install/out/n8n-electron-wrapper-darwin-arm64/n8n-electron-wrapper.app/Contents/MacOS/n8n-electron-wrapper --test-mode || print_error "Test mode failed"
 
 # Launch in normal mode
 print_status "Launching application in normal mode..."
-./out/n8n-darwin-x64/n8n.app/Contents/MacOS/n8n & PID=$!
+./install/out/n8n-electron-wrapper-darwin-arm64/n8n-electron-wrapper.app/Contents/MacOS/n8n-electron-wrapper & PID=$!
 
 # Wait for the process to start
 sleep 5
@@ -66,7 +66,7 @@ fi
 
 # Workflow test with isolation
 print_status "Testing workflow execution..."
-./out/n8n-darwin-x64/n8n.app/Contents/MacOS/n8n --test-mode || {
+./install/out/n8n-electron-wrapper-darwin-arm64/n8n-electron-wrapper.app/Contents/MacOS/n8n-electron-wrapper --test-mode || {
     print_error "Workflow test: FAILED"
     exit 1
 }
@@ -74,7 +74,7 @@ print_status "Workflow test: PASSED"
 
 # Performance test with isolation
 print_status "Running performance test..."
-time ./out/n8n-darwin-x64/n8n.app/Contents/MacOS/n8n --perf-test || {
+time ./install/out/n8n-electron-wrapper-darwin-arm64/n8n-electron-wrapper.app/Contents/MacOS/n8n-electron-wrapper --perf-test || {
     print_error "Performance test: FAILED"
     exit 1
 }

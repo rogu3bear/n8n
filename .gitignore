@@ -143,4 +143,24 @@ Thumbs.db
 *.min.js
 *.min.css
 *.map
-*.sourcemap 
+*.sourcemap
+
+# Additional build and config files
+*.config.js
+*.config.ts
+config/
+biome.jsonc
+codecov.yml
+
+# Docker related
+Dockerfile*
+docker-compose*.yml
+
+# Documentation and legal
+APP_STATE*.md
+CHANGELOG.md
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+CONTRIBUTOR_LICENSE_AGREEMENT.md
+LICENSE*.md
+SECURITY.md 

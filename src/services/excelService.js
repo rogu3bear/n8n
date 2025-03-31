@@ -1,14 +1,18 @@
 const ExcelJS = require('exceljs');
 const log = require('electron-log');
 
+/**
+ * Service for Excel file operations
+ */
 class ExcelService {
   constructor() {
     this.workbook = new ExcelJS.Workbook();
+    log.info('ExcelService initialized');
   }
 
   /**
    * Create a new workbook
-   * @returns {ExcelJS.Workbook} The created workbook
+   * @returns {Promise<boolean>} Success indicator
    */
   async createWorkbook() {
     try {
@@ -22,9 +26,9 @@ class ExcelService {
   }
 
   /**
-   * Load an existing Excel file
-   * @param {string} filePath Path to the Excel file
-   * @returns {Promise<ExcelJS.Workbook>} The loaded workbook
+   * Load an Excel file
+   * @param {string} filePath - Path to the Excel file
+   * @returns {Promise<boolean>} Success indicator
    */
   async loadWorkbook(filePath) {
     try {
@@ -39,8 +43,8 @@ class ExcelService {
 
   /**
    * Save the workbook to a file
-   * @param {string} filePath Path where to save the Excel file
-   * @returns {Promise<void>}
+   * @param {string} filePath - Path to save the Excel file
+   * @returns {Promise<boolean>} Success indicator
    */
   async saveWorkbook(filePath) {
     try {
@@ -55,7 +59,7 @@ class ExcelService {
 
   /**
    * Add a worksheet to the workbook
-   * @param {string} name Name of the worksheet
+   * @param {string} name - Name of the worksheet
    * @returns {ExcelJS.Worksheet} The created worksheet
    */
   addWorksheet(name) {
@@ -71,8 +75,8 @@ class ExcelService {
 
   /**
    * Get a worksheet by name
-   * @param {string} name Name of the worksheet
-   * @returns {ExcelJS.Worksheet|undefined} The worksheet if found
+   * @param {string} name - Name of the worksheet
+   * @returns {ExcelJS.Worksheet} The worksheet
    */
   getWorksheet(name) {
     try {
@@ -88,9 +92,5 @@ class ExcelService {
   }
 }
 
-// Create a singleton instance
 const excelService = new ExcelService();
-
-module.exports = {
-  excelService
-}; 
+module.exports = { excelService }; 

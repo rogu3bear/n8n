@@ -11,6 +11,7 @@ const net = require('net');
 const os = require('os'); // Import os module
 const { excelService } = require('../services/excelService');
 const { exec } = require('child_process');
+const { workflowManager } = require('./workflowManager');
 
 // Constants
 const KEYCHAIN_SERVICE = 'n8n-electron-wrapper';
@@ -49,6 +50,33 @@ if (process.argv.includes('--test-mode')) {
     console.error('Test workflow failed:', err);
     app.quit(1);
   });
+} else if (process.argv.includes('--workflow')) {
+  // Handle custom workflow execution via command line
+  const workflowIndex = process.argv.indexOf('--workflow');
+  if (workflowIndex > 0 && workflowIndex + 1 < process.argv.length) {
+    const workflowPath = process.argv[workflowIndex + 1];
+    console.log(`Executing workflow from: ${workflowPath}`);
+    
+    try {
+      const workflowData = fs.readFileSync(workflowPath, 'utf8');
+      app.whenReady().then(async () => {
+        try {
+          const result = await workflowManager.executeCustomWorkflow(workflowData);
+          console.log('Workflow execution result:', result);
+          app.quit(0);
+        } catch (err) {
+          console.error('Workflow execution failed:', err);
+          app.quit(1);
+        }
+      });
+    } catch (err) {
+      console.error(`Failed to read workflow file: ${err.message}`);
+      app.quit(1);
+    }
+  } else {
+    console.error('No workflow file specified with --workflow flag');
+    app.quit(1);
+  }
 } else if (process.argv.includes('--perf-test')) {
   console.time('startup');
   app.whenReady().then(() => {
@@ -430,27 +458,14 @@ if (process.argv.includes('--test-mode')) {
     ipcMain.handle('app:get-arch', () => process.arch);
     
     // Handle workflow execution
-    ipcMain.handle('execute-workflow', async (event, workflow) => {
+    ipcMain.handle('execute-workflow', async (event, workflowData) => {
       try {
-        // Save workflow to file
-        const workflowPath = path.join(WORKFLOW_DIR, `${workflow.name}.json`);
-        fs.writeFileSync(workflowPath, JSON.stringify(workflow, null, 2));
-
-        // Execute workflow using n8n CLI
-        return new Promise((resolve, reject) => {
-          exec(`npx n8n execute --file=${workflowPath}`, (error, stdout, stderr) => {
-            if (error) {
-              log.error('Workflow execution error:', error);
-              reject(error);
-              return;
-            }
-            log.info('Workflow execution output:', stdout);
-            resolve({ success: true, output: stdout });
-          });
-        });
+        log.info('Received workflow execution request');
+        const result = await workflowManager.executeCustomWorkflow(workflowData);
+        return { success: true, result };
       } catch (error) {
         log.error('Error executing workflow:', error);
-        throw error;
+        return { success: false, error: error.message };
       }
     });
 
@@ -466,6 +481,37 @@ if (process.argv.includes('--test-mode')) {
       } catch (error) {
         log.error('Error getting workflows:', error);
         throw error;
+      }
+    });
+
+    // Handle excel operations
+    ipcMain.handle('excel-create', async () => {
+      try {
+        await excelService.createWorkbook();
+        return { success: true };
+      } catch (error) {
+        log.error('Error creating Excel workbook:', error);
+        return { success: false, error: error.message };
+      }
+    });
+    
+    ipcMain.handle('excel-save', async (event, { filePath, sheetData }) => {
+      try {
+        await excelService.createWorkbook();
+        const sheet = excelService.addWorksheet('Sheet1');
+        
+        // Add data to worksheet
+        if (Array.isArray(sheetData)) {
+          sheetData.forEach(row => {
+            sheet.addRow(row);
+          });
+        }
+        
+        await excelService.saveWorkbook(filePath);
+        return { success: true, filePath };
+      } catch (error) {
+        log.error('Error saving Excel file:', error);
+        return { success: false, error: error.message };
       }
     });
   }

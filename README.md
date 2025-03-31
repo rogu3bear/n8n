@@ -1,190 +1,172 @@
 # n8n Desktop Wrapper
 
-A secure and efficient Electron wrapper for n8n, providing a native desktop experience for workflow automation.
+A secure, dependable desktop application wrapper for n8n workflow automation platform.
 
 ## Features
 
-- Native desktop application for n8n
-- Secure credential management
-- Local workflow storage
-- Cross-platform support (Windows, macOS, Linux)
-- Automated testing and security checks
-- Docker support for development
-- Modern build system with Vite
-- TypeScript and React support
-- Automated code formatting and linting
-
-## Security
-
-This project follows security best practices:
-
-- Regular security audits using `npm audit` and Snyk
-- Secure credential storage using system keychain
-- Input validation and sanitization
-- Regular dependency updates
-- Comprehensive error handling
-- Secure file system operations
-- Content Security Policy (CSP) implementation
-- Sandboxed renderer process
-- Secure IPC communication
-
-## Prerequisites
-
-- Node.js >= 18.18.0
-- npm >= 9.0.0
-- Docker (optional, for development)
-- Python 3.8+ (for development tools)
+- Run n8n locally as a desktop application
+- Create, save, and execute workflows from JSON files
+- Excel integration for data import/export
+- Standalone application with no external dependencies
+- Cross-platform support (macOS, Windows, Linux)
+- Secure authentication and data handling
 
 ## Installation
 
-1. Clone the repository:
+### Prerequisites
+
+- Node.js ≥ 18.18.0
+- npm ≥ 9.0.0
+
+### Download and Install
+
+Download the latest release from the GitHub Releases page:
+
+- macOS: `n8n-electron-wrapper-darwin-x64.zip` or `n8n-electron-wrapper-darwin-arm64.zip`
+- Windows: `n8n-electron-wrapper-win32-x64.zip`
+- Linux: `n8n-electron-wrapper-linux-x64.zip`
+
+Extract and run the application:
+
+- macOS: Double-click `n8n-electron-wrapper.app`
+- Windows: Double-click `n8n-electron-wrapper.exe`
+- Linux: Run `./n8n-electron-wrapper`
+
+### Building from Source
 
 ```bash
-git clone https://github.com/rogu3bear/n8n.git
-cd n8n
-```
+# Clone the repository
+git clone https://github.com/your-username/n8n-electron-wrapper.git
+cd n8n-electron-wrapper
 
-2. Install dependencies:
-
-```bash
+# Install dependencies
 npm install
-```
 
-3. Set up development environment:
+# Build the application
+npm run build
 
-```bash
-npm run setup:python
-```
-
-## Development
-
-### Code Quality
-
-The project uses modern tools for code quality:
-
-- ESLint with TypeScript and React support
-- Prettier for code formatting
-- Husky for git hooks
-- lint-staged for pre-commit checks
-
-### Build System
-
-The project uses Vite for fast and efficient builds:
-
-```bash
-# Development
-npm run dev
-
-# Production build
+# Package the application
 npm run make
-
-# Watch mode
-npm run dev:watch
-```
-
-### Testing
-
-Run comprehensive tests:
-
-```bash
-# Run all tests
-npm run test:all
-
-# Watch mode
-npm run test:watch
-
-# Coverage report
-npm run test:coverage
-```
-
-### Security Checks
-
-Regular security audits:
-
-```bash
-# Run security audit
-npm run security-audit
-
-# Fix security issues
-npm audit fix
 ```
 
 ## Usage
 
-1. Download from [Releases](https://github.com/rogu3bear/n8n/releases)
-2. Run the app—create a workflow (e.g., HTTP request to log data)
-3. Check logs in ~/.n8n/logs if it bombs
-
-## Development and Debugging
-
-### VS Code Debugging
-
-The project includes comprehensive VS Code debugging configurations:
-
-1. **Debug Main Process**
-   - F5 or select "Debug Main Process" from the debug menu
-   - Debugs the Electron main process
-   - Breakpoints in `src/core/main.js`
-
-2. **Debug Renderer Process**
-   - Debugs the Electron renderer process
-   - Breakpoints in `src/renderer/` files
-   - Chrome DevTools integration
-
-3. **Debug Tests**
-   - Runs Jest tests with debugging
-   - Breakpoints in test files
-   - Full test coverage debugging
-
-4. **Debug Test Mode**
-   - Runs the app in test mode
-   - Tests workflow execution
-   - Breakpoints in `src/tests/`
-
-5. **Debug Performance Test**
-   - Measures app startup time
-   - Performance profiling
-   - Memory leak detection
-
-### Terminal Testing
-
-Run comprehensive tests from the terminal:
+### Running Tests
 
 ```bash
 # Run all tests
-./test.sh
+npm test
 
-# Individual test modes
-npm run make
-./out/n8n-darwin-x64/n8n.app/Contents/MacOS/n8n --test-mode
+# Run a specific test
+npx jest src/tests/excelService.test.js
 ```
 
-## Contributing
+### Test Mode
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Start the application in test mode to run a predefined test workflow:
+
+```bash
+./n8n-electron-wrapper --test-mode
+```
+
+### Custom Workflow Execution
+
+Execute a custom workflow from a JSON file:
+
+```bash
+./n8n-electron-wrapper --workflow path/to/workflow.json
+```
+
+Example workflow JSON structure:
+
+```json
+{
+  "name": "My Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "text": "Hello, World!"
+      },
+      "name": "Set",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [250, 300]
+    }
+  ],
+  "connections": {}
+}
+```
+
+### Excel Operations
+
+The application includes a robust Excel service for:
+
+- Creating workbooks
+- Adding/managing worksheets
+- Importing data from Excel files
+- Exporting workflow results to Excel
+
+## Troubleshooting
+
+### Log Files
+
+Check log files for errors:
+
+```bash
+cat ~/.n8n/logs/main.log
+```
+
+### Common Issues
+
+1. **Application doesn't start**
+   - Verify Node.js version with `node -v`
+   - Check logs for specific errors
+
+2. **Workflow execution fails**
+   - Ensure workflow JSON is valid
+   - Check log files for detailed error messages
+
+## Development
+
+### Project Structure
+
+```
+.
+├── src/
+│   ├── core/           # Main process code
+│   ├── renderer/       # Renderer process code
+│   ├── services/       # Shared services
+│   └── tests/          # Test files
+├── dist/               # Build output
+└── out/                # Package output
+```
+
+### Development Scripts
+
+```bash
+# Start in development mode
+npm run dev
+
+# Run tests
+npm test
+
+# Build for production
+npm run build
+
+# Package the application
+npm run make
+```
+
+## Security
+
+- All sensitive data is encrypted using Electron's safeStorage API
+- Local data is stored in the user's app data directory
+- No data is sent to external servers without explicit user permission
 
 ## License
 
-This project is licensed under the ISC License - see the LICENSE file for details.
+MIT
 
-## Support
+## Contact
 
-For support, please visit:
-
-- [GitHub Issues](https://github.com/rogu3bear/n8n/issues)
-- [n8n Documentation](https://docs.n8n.io)
-- [n8n Community](https://community.n8n.io)
-
-## Security Policy
-
-Please report security vulnerabilities to security@n8n.io
-
-## Acknowledgments
-
-- n8n team and community
-- Electron team
-- All contributors
+For support or feature requests, please open an issue on GitHub.

@@ -1,0 +1,1 @@
+{ "jest": { "haste": { "hasteImplModulePath": "<rootDir>/node_modules/jest-haste-map/build/index.js", "platforms": ["ios", "android"], "providesModuleNodeModules": ["react-native"], "defaultPlatform": "ios", "ignorePattern": "<rootDir>/package.json" } } }

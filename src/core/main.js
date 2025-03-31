@@ -9,7 +9,7 @@ const debug = require('debug')('n8n:main');
 const { spawn } = require('child_process');
 const net = require('net');
 const os = require('os'); // Import os module
-const { excelService } = require('@/services/excelService');
+const { excelService } = require('../services/excelService');
 const { exec } = require('child_process');
 
 // Constants

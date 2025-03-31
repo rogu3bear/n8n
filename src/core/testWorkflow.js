@@ -3,7 +3,7 @@ const path = require('path');
 const { exec } = require('child_process');
 const log = require('electron-log');
 const os = require('os');
-const { excelService } = require('../features/workflows/excelService');
+const { excelService } = require('../../features/workflows/excelService');
 
 module.exports = {
   async execute() {

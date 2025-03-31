@@ -1,10 +1,4 @@
-const { workflowManager } = require('../core/workflowManager');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const { excelService } = require('../features/workflows/excelService');
-
-// Mock dependencies
+// Mock dependencies FIRST
 jest.mock('electron-log', () => ({
   info: jest.fn(),
   warn: jest.fn(),
@@ -18,8 +12,8 @@ jest.mock('fs', () => ({
   mkdirSync: jest.fn()
 }));
 
-// Mock excelService
-jest.mock('../services/excelService', () => ({
+// Mock excelService - IMPORTANT: Mock this BEFORE importing workflowManager
+jest.mock('../../features/workflows/excelService', () => ({
   excelService: {
     createWorkbook: jest.fn().mockResolvedValue(true),
     addWorksheet: jest.fn().mockReturnValue({
@@ -28,6 +22,14 @@ jest.mock('../services/excelService', () => ({
     saveWorkbook: jest.fn().mockResolvedValue(true)
   }
 }));
+
+// Now import the modules that use the mocks
+const { workflowManager } = require('../workflowManager');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+// We need excelService again here to reference the mock in the test assertions
+const { excelService } = require('../../features/workflows/excelService');
 
 describe('WorkflowManager', () => {
   beforeEach(() => {
@@ -89,7 +91,7 @@ describe('WorkflowManager', () => {
       expect(result.output).toBe('Workflow executed successfully');
       expect(result.resultPath).toBeDefined();
       
-      // Verify Excel operations
+      // Verify Excel operations - Now excelService.createWorkbook is the mock
       expect(excelService.createWorkbook).toHaveBeenCalled();
       expect(excelService.addWorksheet).toHaveBeenCalledWith('Workflow Details');
       expect(excelService.saveWorkbook).toHaveBeenCalled();
@@ -100,7 +102,7 @@ describe('WorkflowManager', () => {
     });
 
     test('handles errors during workflow execution', async () => {
-      // Mock excelService to throw an error
+      // Now this should work as excelService.createWorkbook is the mock
       excelService.createWorkbook.mockRejectedValueOnce(new Error('Excel error'));
 
       await expect(workflowManager.executeCustomWorkflow({

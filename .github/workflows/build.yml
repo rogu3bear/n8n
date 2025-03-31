@@ -1,0 +1,26 @@
+name: Build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [created]
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18.17'
+      - run: npm ci
+      - run: npm run test:all
+      - run: npm run security-audit
+      - run: npm run make
+      - uses: actions/upload-artifact@v3
+        with:
+          name: app-${{ matrix.os }}
+          path: out/ 

@@ -5,18 +5,53 @@ node_modules/
 
 # Testing
 coverage/
+.nyc_output/
 
 # Production
 dist/
 build/
-release/
+out/
 
-# Environment
+# Development
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Electron
+.electron-builder.env
+*.asar
+*.asar.unpacked
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# n8n
+.n8n/
+.n8n-deps/
+.n8n-config/
 
 # Logs
 logs/
@@ -25,9 +60,34 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+
 # Editor directories and files
-.idea/
-.vscode/
 *.suo
 *.ntvs*
 *.njsproj
@@ -35,7 +95,6 @@ yarn-error.log*
 *.sw?
 
 # OS generated files
-.DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100

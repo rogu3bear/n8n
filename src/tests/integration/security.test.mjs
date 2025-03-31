@@ -1,12 +1,12 @@
-const fs = require('fs').promises;
-const path = require('path');
-const os = require('os');
-const { logger } = require('../../utils/logger');
-const { stateManager } = require('../../services/stateManager');
-const { eventHandler } = require('../../services/eventHandler');
+import { promises as fs } from 'fs';
+import path from 'path';
+import os from 'os';
+import { logger } from '../../utils/logger.mjs';
+import { stateManager } from '../../services/stateManager.mjs';
+import { eventHandler } from '../../services/eventHandler.mjs';
 
 // Mock StateManager
-jest.mock('../../services/stateManager', () => ({
+jest.mock('../../services/stateManager.mjs', () => ({
     stateManager: {
         setBaseDir: jest.fn(),
         saveWorkflow: jest.fn(),
@@ -41,7 +41,7 @@ jest.mock('os', () => {
 });
 
 // Mock logger
-jest.mock('../../utils/logger', () => ({
+jest.mock('../../utils/logger.mjs', () => ({
     logger: {
         info: jest.fn(),
         error: jest.fn(),

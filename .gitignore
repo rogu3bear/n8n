@@ -163,4 +163,10 @@ CODE_OF_CONDUCT.md
 CONTRIBUTING.md
 CONTRIBUTOR_LICENSE_AGREEMENT.md
 LICENSE*.md
-SECURITY.md 
+SECURITY.md
+
+# Project specific
+docker/
+config/development/
+config/production/
+resources/ 

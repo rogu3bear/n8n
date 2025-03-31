@@ -6,17 +6,178 @@
     <style>
       body {
         margin: 0;
-        padding: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        background: #f5f5f5;
       }
       #app {
-        width: 100vw;
-        height: 100vh;
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      h1 {
+        color: #333;
+        margin-bottom: 20px;
+      }
+      .workflow-section {
+        margin-bottom: 30px;
+      }
+      button {
+        background: #ff6d5a;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.2s;
+      }
+      button:hover {
+        background: #ff5a45;
+      }
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+      #result {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 4px;
+        background: #f8f9fa;
+      }
+      .success {
+        color: #28a745;
+      }
+      .error {
+        color: #dc3545;
+      }
+      .loading {
+        display: none;
+        margin: 20px 0;
+      }
+      .loading.active {
+        display: block;
       }
     </style>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="./index.ts"></script>
+    <div id="app">
+      <h1>n8n Desktop</h1>
+      
+      <div class="workflow-section">
+        <h2>Test Workflow</h2>
+        <p>Execute a simple test workflow that writes to a file.</p>
+        <button onclick="runTestWorkflow()" id="testButton">Run Test Workflow</button>
+        <div class="loading" id="testLoading">Executing workflow...</div>
+        <div id="testResult"></div>
+      </div>
+      
+      <div class="workflow-section">
+        <h2>Custom Workflow</h2>
+        <p>Create and execute your own workflow.</p>
+        <textarea id="workflowJson" rows="10" style="width: 100%; margin: 10px 0; padding: 10px; font-family: monospace;"></textarea>
+        <button onclick="runCustomWorkflow()" id="customButton">Execute Workflow</button>
+        <div class="loading" id="customLoading">Executing workflow...</div>
+        <div id="customResult"></div>
+      </div>
+    </div>
+    
+    <script>
+      const { ipcRenderer } = require('electron');
+      
+      // Test workflow
+      async function runTestWorkflow() {
+        const button = document.getElementById('testButton');
+        const loading = document.getElementById('testLoading');
+        const result = document.getElementById('testResult');
+        
+        button.disabled = true;
+        loading.classList.add('active');
+        result.innerHTML = '';
+        
+        try {
+          const response = await ipcRenderer.invoke('execute-workflow', {
+            name: "Test Workflow",
+            nodes: [
+              {
+                parameters: { text: "Hello, World!" },
+                name: "Set",
+                type: "n8n-nodes-base.set",
+                typeVersion: 1,
+                position: [250, 300]
+              },
+              {
+                parameters: { 
+                  operation: "write",
+                  fileName: "/tmp/test.txt",
+                  content: "= {{$json.text}}"
+                },
+                name: "Write File",
+                type: "n8n-nodes-base.fileSystem",
+                typeVersion: 1,
+                position: [450, 300]
+              }
+            ],
+            connections: {
+              "Set": {
+                main: [
+                  [
+                    {
+                      node: "Write File",
+                      index: 0,
+                      type: "main"
+                    }
+                  ]
+                ]
+              }
+            }
+          });
+          
+          if (response.success) {
+            result.innerHTML = `<div class="success">✓ Workflow executed successfully!</div>`;
+            result.innerHTML += `<pre>${response.output}</pre>`;
+          } else {
+            result.innerHTML = `<div class="error">✗ Workflow execution failed: ${response.error}</div>`;
+          }
+        } catch (error) {
+          result.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`;
+        } finally {
+          button.disabled = false;
+          loading.classList.remove('active');
+        }
+      }
+      
+      // Custom workflow
+      async function runCustomWorkflow() {
+        const button = document.getElementById('customButton');
+        const loading = document.getElementById('customLoading');
+        const result = document.getElementById('customResult');
+        const workflowJson = document.getElementById('workflowJson').value;
+        
+        button.disabled = true;
+        loading.classList.add('active');
+        result.innerHTML = '';
+        
+        try {
+          const workflow = JSON.parse(workflowJson);
+          const response = await ipcRenderer.invoke('execute-workflow', workflow);
+          
+          if (response.success) {
+            result.innerHTML = `<div class="success">✓ Workflow executed successfully!</div>`;
+            result.innerHTML += `<pre>${response.output}</pre>`;
+          } else {
+            result.innerHTML = `<div class="error">✗ Workflow execution failed: ${response.error}</div>`;
+          }
+        } catch (error) {
+          result.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`;
+        } finally {
+          button.disabled = false;
+          loading.classList.remove('active');
+        }
+      }
+    </script>
   </body>
 </html> 

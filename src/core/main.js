@@ -10,6 +10,7 @@ const { spawn } = require('child_process');
 const net = require('net');
 const os = require('os'); // Import os module
 const { excelService } = require('../services/excelService');
+const { exec } = require('child_process');
 
 // Constants
 const KEYCHAIN_SERVICE = 'n8n-electron-wrapper';
@@ -26,6 +27,7 @@ const PORT_RANGE = { start: 5678, end: 5688 };
 const MAX_N8N_START_ATTEMPTS = 3;
 const N8N_START_TIMEOUT = 30000; // 30 seconds timeout
 const N8N_PROCESS_CHECK_INTERVAL = 1000; // Check every second
+const WORKFLOW_DIR = path.join(app.getPath('userData'), 'workflows');
 
 // Global state
 let n8nProcess = null;
@@ -426,5 +428,70 @@ if (process.argv.includes('--test-mode')) {
     ipcMain.handle('app:get-version', () => app.getVersion());
     ipcMain.handle('app:get-platform', () => process.platform);
     ipcMain.handle('app:get-arch', () => process.arch);
+    
+    // Handle workflow execution
+    ipcMain.handle('execute-workflow', async (event, workflow) => {
+      try {
+        const workflowPath = await saveWorkflow(workflow, workflow.name);
+        const output = await executeWorkflowLocally(workflowPath);
+        return { success: true, output };
+      } catch (error) {
+        log.error(`Workflow execution failed: ${error.message}`);
+        return { success: false, error: error.message };
+      }
+    });
+  }
+
+  /**
+   * Execute a workflow locally without API key
+   * @param {string} workflowPath Path to the workflow file
+   * @returns {Promise<string>} The workflow output
+   */
+  async function executeWorkflowLocally(workflowPath) {
+    try {
+      log.info(`Executing workflow from: ${workflowPath}`);
+      
+      return new Promise((resolve, reject) => {
+        exec(`npx n8n execute --file=${workflowPath}`, (error, stdout, stderr) => {
+          if (error) {
+            log.error(`Error executing workflow: ${stderr}`);
+            return reject(error);
+          }
+          log.info(`Workflow output: ${stdout}`);
+          resolve(stdout);
+        });
+      });
+    } catch (error) {
+      log.error(`Failed to execute workflow: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Save a workflow to the local filesystem
+   * @param {Object} workflow The workflow object
+   * @param {string} name The workflow name
+   * @returns {Promise<string>} The path to the saved workflow
+   */
+  async function saveWorkflow(workflow, name) {
+    try {
+      // Ensure workflow directory exists
+      if (!fs.existsSync(WORKFLOW_DIR)) {
+        fs.mkdirSync(WORKFLOW_DIR, { recursive: true });
+      }
+      
+      // Create a safe filename
+      const safeName = name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const workflowPath = path.join(WORKFLOW_DIR, `${safeName}.json`);
+      
+      // Save the workflow
+      await fsPromises.writeFile(workflowPath, JSON.stringify(workflow, null, 2));
+      log.info(`Saved workflow to: ${workflowPath}`);
+      
+      return workflowPath;
+    } catch (error) {
+      log.error(`Failed to save workflow: ${error.message}`);
+      throw error;
+    }
   }
 }

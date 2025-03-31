@@ -3,83 +3,86 @@ const path = require('path');
 const { exec } = require('child_process');
 const log = require('electron-log');
 const os = require('os');
+const { excelService } = require('../services/excelService');
 
 module.exports = {
-  execute: async () => {
+  async execute() {
     try {
-      log.info('Starting test workflow execution...');
+      log.info('Starting test workflow');
       
-      // Create a simple workflow file
-      const workflow = {
-        name: "Test Workflow",
-        nodes: [
-          {
-            parameters: { text: "Hello, World!" },
-            name: "Set",
-            type: "n8n-nodes-base.set",
-            typeVersion: 1,
-            position: [250, 300]
-          },
-          {
-            parameters: { 
-              operation: "write",
-              fileName: "/tmp/test.txt",
-              content: "= {{$json.text}}"
-            },
-            name: "Write File",
-            type: "n8n-nodes-base.fileSystem",
-            typeVersion: 1,
-            position: [450, 300]
-          }
-        ],
-        connections: {
-          "Set": {
-            main: [
-              [
-                {
-                  node: "Write File",
-                  index: 0,
-                  type: "main"
-                }
-              ]
-            ]
-          }
-        }
+      // Create test Excel file
+      const testData = {
+        name: 'Test Workflow',
+        timestamp: new Date().toISOString(),
+        status: 'running'
       };
 
-      const workflowPath = path.join(os.tmpdir(), 'test-workflow.json');
-      fs.writeFileSync(workflowPath, JSON.stringify(workflow));
-      log.info(`Created test workflow at: ${workflowPath}`);
+      // Create Excel workbook
+      await excelService.createWorkbook();
+      const sheet = excelService.addWorksheet('Test Results');
+      
+      // Add headers
+      sheet.addRow(['Field', 'Value']);
+      
+      // Add data
+      Object.entries(testData).forEach(([key, value]) => {
+        sheet.addRow([key, value]);
+      });
 
-      // Execute the workflow using n8n CLI
+      // Save Excel file
+      const excelPath = path.join(os.tmpdir(), 'test-results.xlsx');
+      await excelService.saveWorkbook(excelPath);
+      log.info(`Excel file saved to ${excelPath}`);
+
+      // Create workflow definition
+      const workflow = {
+        name: 'Test Workflow',
+        nodes: [
+          {
+            parameters: {
+              filePath: excelPath,
+              operation: 'read'
+            },
+            name: 'Excel',
+            type: 'n8n-nodes-base.excel',
+            typeVersion: 1,
+            position: [250, 300]
+          }
+        ],
+        connections: {}
+      };
+
+      // Save workflow to temporary file
+      const workflowPath = path.join(os.tmpdir(), 'test-workflow.json');
+      fs.writeFileSync(workflowPath, JSON.stringify(workflow, null, 2));
+      log.info(`Workflow saved to ${workflowPath}`);
+
+      // Execute workflow
       return new Promise((resolve, reject) => {
         exec(`npx n8n execute --file=${workflowPath}`, (error, stdout, stderr) => {
-          if (error) {
-            log.error(`Error executing workflow: ${stderr}`);
-            return reject(error);
-          }
-          log.info(`Workflow output: ${stdout}`);
-          
-          // Verify the output file was created
-          if (fs.existsSync('/tmp/test.txt')) {
-            const content = fs.readFileSync('/tmp/test.txt', 'utf8');
-            log.info(`Output file content: ${content}`);
-            resolve(content);
-          } else {
-            reject(new Error('Output file was not created'));
-          }
-          
-          // Clean up
           try {
+            // Cleanup temporary files
             fs.unlinkSync(workflowPath);
-            log.info('Cleaned up test workflow file');
+            fs.unlinkSync(excelPath);
+            
+            if (error) {
+              log.error('Workflow execution error:', error);
+              log.error('Stderr:', stderr);
+              reject(error);
+              return;
+            }
+            
+            log.info('Workflow execution successful');
+            log.debug('Workflow output:', stdout);
+            resolve({ success: true, output: stdout });
           } catch (cleanupError) {
-            log.warn(`Failed to clean up test workflow file: ${cleanupError.message}`);
+            log.error('Error during cleanup:', cleanupError);
+            reject(cleanupError);
           }
         });
       });
     } catch (error) {
-      log.error(`Test workflow execution failed: ${error.message}`);
+      log.error('Test workflow failed:', error);
       throw error;
     }
   }

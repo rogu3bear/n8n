@@ -29,13 +29,20 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'src/renderer/index.html')
+        renderer: resolve(__dirname, 'src/renderer/index.html')
       }
     }
   },
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')
+    }
+  },
+  server: {
+    port: 5678,
+    strictPort: true,
+    headers: {
+      'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
     }
   }
 });

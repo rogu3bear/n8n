@@ -10,9 +10,15 @@ class ExcelService {
    * Create a new workbook
    * @returns {ExcelJS.Workbook} The created workbook
    */
-  createWorkbook() {
-    this.workbook = new ExcelJS.Workbook();
-    return this.workbook;
+  async createWorkbook() {
+    try {
+      this.workbook = new ExcelJS.Workbook();
+      log.info('Created new workbook');
+      return true;
+    } catch (error) {
+      log.error('Error creating workbook:', error);
+      throw error;
+    }
   }
 
   /**
@@ -22,10 +28,11 @@ class ExcelService {
    */
   async loadWorkbook(filePath) {
     try {
-      this.workbook = await this.workbook.xlsx.readFile(filePath);
-      return this.workbook;
+      await this.workbook.xlsx.readFile(filePath);
+      log.info(`Loaded workbook from ${filePath}`);
+      return true;
     } catch (error) {
-      log.error('Error loading Excel file:', error);
+      log.error(`Error loading workbook from ${filePath}:`, error);
       throw error;
     }
   }
@@ -38,8 +45,10 @@ class ExcelService {
   async saveWorkbook(filePath) {
     try {
       await this.workbook.xlsx.writeFile(filePath);
+      log.info(`Saved workbook to ${filePath}`);
+      return true;
     } catch (error) {
-      log.error('Error saving Excel file:', error);
+      log.error(`Error saving workbook to ${filePath}:`, error);
       throw error;
     }
   }
@@ -50,7 +59,14 @@ class ExcelService {
    * @returns {ExcelJS.Worksheet} The created worksheet
    */
   addWorksheet(name) {
-    return this.workbook.addWorksheet(name);
+    try {
+      const worksheet = this.workbook.addWorksheet(name);
+      log.info(`Added worksheet: ${name}`);
+      return worksheet;
+    } catch (error) {
+      log.error(`Error adding worksheet ${name}:`, error);
+      throw error;
+    }
   }
 
   /**
@@ -59,7 +75,16 @@ class ExcelService {
    * @returns {ExcelJS.Worksheet|undefined} The worksheet if found
    */
   getWorksheet(name) {
-    return this.workbook.getWorksheet(name);
+    try {
+      const worksheet = this.workbook.getWorksheet(name);
+      if (!worksheet) {
+        throw new Error(`Worksheet ${name} not found`);
+      }
+      return worksheet;
+    } catch (error) {
+      log.error(`Error getting worksheet ${name}:`, error);
+      throw error;
+    }
   }
 }
 

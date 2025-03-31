@@ -23,14 +23,13 @@ export default defineConfig({
     ]),
     renderer()
   ],
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, 'src')
-    }
-  },
   build: {
     outDir: 'dist/renderer',
-    emptyOutDir: true,
-    sourcemap: true
+    sourcemap: true,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'src/renderer/index.html')
+      }
+    }
   }
 }); 

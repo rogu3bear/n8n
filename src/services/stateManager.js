@@ -1,6 +1,6 @@
 const { logger } = require('../utils/logger');
 const { EventEmitter } = require('events');
-const fs = require('fs').promises;
+const { readFile, writeFile, mkdir, readdir, unlink } = require('fs/promises');
 const path = require('path');
 const os = require('os');
 
@@ -20,126 +20,201 @@ function getHomeDir() {
 }
 
 class StateManager extends EventEmitter {
-  constructor() {
+  constructor(baseDir) {
     super();
-    this.state = new Map();
-    this.observers = new Map();
-    this.stateFilePath = path.join(getHomeDir(), '.n8n', 'state.json');
-    this.updateQueue = new Map();
-    this.batchTimeout = 1000; // 1 second
-    this.setupBatchProcessing();
-  }
-
-  setBaseDir(baseDir) {
+    this.baseDir = baseDir;
     this.stateFilePath = path.join(baseDir, 'state.json');
+    this.state = {
+      workflows: {},
+      nodes: {},
+      connections: {},
+      settings: {}
+    };
+    this.maxBackups = 3;
+    this.observers = new Map();
   }
 
-  async saveWorkflow(workflow) {
+  async initialize() {
     try {
-      const workflows = this.state.get('workflows') || new Map();
-      workflows.set(workflow.id, workflow);
-      this.state.set('workflows', workflows);
-      await this.saveState();
-      this.emit('workflow:saved', workflow);
+      await mkdir(path.dirname(this.stateFilePath), { recursive: true });
+      await this.loadState();
     } catch (error) {
-      logger.error('Error saving workflow:', error);
-      throw error;
-    }
-  }
-
-  async loadWorkflow(id) {
-    try {
-      const workflows = this.state.get('workflows') || new Map();
-      return workflows.get(id);
-    } catch (error) {
-      logger.error('Error loading workflow:', error);
-      throw error;
-    }
-  }
-
-  async deleteWorkflow(id) {
-    try {
-      const workflows = this.state.get('workflows') || new Map();
-      workflows.delete(id);
-      this.state.set('workflows', workflows);
-      await this.saveState();
-      this.emit('workflow:deleted', id);
-    } catch (error) {
-      logger.error('Error deleting workflow:', error);
-      throw error;
-    }
-  }
-
-  async createWorkflow(workflow) {
-    try {
-      const workflows = this.state.get('workflows') || new Map();
-      const id = Date.now().toString();
-      const newWorkflow = { ...workflow, id };
-      workflows.set(id, newWorkflow);
-      this.state.set('workflows', workflows);
-      await this.saveState();
-      this.emit('workflow:created', newWorkflow);
-      return newWorkflow;
-    } catch (error) {
-      logger.error('Error creating workflow:', error);
-      throw error;
-    }
-  }
-
-  async cleanup() {
-    try {
-      const tempFiles = await fs.readdir(path.dirname(this.stateFilePath));
-      for (const file of tempFiles) {
-        if (file.startsWith('temp.') && file.endsWith('.json')) {
-          await fs.unlink(path.join(path.dirname(this.stateFilePath), file));
-        }
+      if (error.code !== 'EEXIST') {
+        throw error;
       }
-    } catch (error) {
-      logger.error('Error cleaning up temporary files:', error);
-      throw error;
     }
   }
 
-  setupBatchProcessing() {
-    setInterval(() => this.processBatchUpdates(), this.batchTimeout);
+  async getState() {
+    return this.state;
   }
 
-  async updateState(key, value) {
-    // Only update if value has changed
-    if (this.state.get(key) === value) {
-      return;
-    }
-
-    // Queue the update for batch processing
-    this.updateQueue.set(key, value);
-  }
-
-  async processBatchUpdates() {
-    if (this.updateQueue.size === 0) {
-      return;
-    }
-
-    const updates = new Map(this.updateQueue);
-    this.updateQueue.clear();
-
-    for (const [key, value] of updates) {
-      this.state.set(key, value);
-      await this.notifyObservers(key);
-    }
-
-    // Save state to file after batch processing
+  async setState(newState) {
+    await this.createBackup();
+    this.state = newState;
     await this.saveState();
   }
 
-  async notifyObservers(key) {
-    const observers = this.observers.get(key) || [];
-    for (const observer of observers) {
+  async saveState() {
+    try {
+      await writeFile(this.stateFilePath, JSON.stringify(this.state, null, 2));
+      logger.debug('State saved successfully');
+    } catch (error) {
+      logger.error('Error saving state:', error);
+      throw error;
+    }
+  }
+
+  async createBackup() {
+    try {
+      const backupPath = `${this.stateFilePath}.backup.${Date.now()}`;
+      let currentState;
       try {
-        await observer(this.state.get(key));
+        // Try to read the current state file
+        currentState = await readFile(this.stateFilePath, 'utf8');
       } catch (error) {
-        logger.error(`Error notifying observer for ${key}:`, error);
+        if (error.code === 'ENOENT') {
+          // If file doesn't exist, use current state
+          currentState = JSON.stringify(this.state, null, 2);
+        } else {
+          throw error;
+        }
+      }
+      // Write the backup
+      await writeFile(backupPath, currentState);
+      await this.rotateBackups();
+      logger.debug('Backup created successfully');
+    } catch (error) {
+      logger.error('Failed to create backup:', error);
+      throw error;
+    }
+  }
+
+  async rotateBackups() {
+    try {
+      const dir = path.dirname(this.stateFilePath);
+      const files = await readdir(dir);
+      const backups = files
+        .filter(f => f.startsWith(path.basename(this.stateFilePath) + '.backup.'))
+        .sort((a, b) => b.localeCompare(a)); // Sort newest to oldest
+
+      // Keep only the most recent maxBackups
+      const filesToDelete = backups.slice(this.maxBackups);
+      for (const file of filesToDelete) {
+        await unlink(path.join(dir, file));
+      }
+    } catch (error) {
+      logger.error('Failed to rotate backups:', error);
+    }
+  }
+
+  async restoreFromBackup() {
+    try {
+      const dir = path.dirname(this.stateFilePath);
+      const files = await readdir(dir);
+      const backups = files
+        .filter(f => f.startsWith(path.basename(this.stateFilePath) + '.backup.'))
+        .sort((a, b) => b.localeCompare(a)); // Sort newest to oldest
+
+      if (backups.length > 0) {
+        const latestBackup = backups[0];
+        const backupData = await readFile(path.join(dir, latestBackup), 'utf8');
+        this.state = JSON.parse(backupData);
+        // Save the restored state back to the main state file
+        await this.saveState();
+        logger.info('State restored from backup successfully');
+      } else {
+        logger.warn('No backup found, initializing empty state');
+        this.state = {
+          workflows: {},
+          nodes: {},
+          connections: {},
+          settings: {}
+        };
+      }
+    } catch (error) {
+      logger.error('Failed to restore from backup:', error);
+      this.state = {
+        workflows: {},
+        nodes: {},
+        connections: {},
+        settings: {}
+      };
+    }
+    return this.state;
+  }
+
+  async loadState() {
+    try {
+      const data = await readFile(this.stateFilePath, 'utf8');
+      this.state = JSON.parse(data);
+      logger.info('State loaded successfully');
+    } catch (error) {
+      if (error.code === 'ENOENT' || error instanceof SyntaxError) {
+        logger.warn('State file missing or corrupted, attempting restore from backup');
+        await this.restoreFromBackup();
+      } else {
+        logger.error('Failed to load state:', error);
+        throw error;
       }
     }
+    return this.state;
+  }
+
+  async createWorkflow(workflow) {
+    if (!workflow.id) {
+      throw new Error('Workflow must have an id');
+    }
+
+    if (!this.state.workflows) {
+      this.state.workflows = {};
+    }
+
+    this.state.workflows[workflow.id] = workflow;
+    await this.saveState();
+  }
+
+  async deleteWorkflow(workflowId) {
+    if (this.state.workflows && this.state.workflows[workflowId]) {
+      delete this.state.workflows[workflowId];
+      await this.saveState();
+    }
+  }
+
+  async addNode(workflowId, node) {
+    if (!this.state.workflows || !this.state.workflows[workflowId]) {
+      throw new Error('Workflow not found');
+    }
+
+    if (!this.state.workflows[workflowId].nodes) {
+      this.state.workflows[workflowId].nodes = [];
+    }
+
+    this.state.workflows[workflowId].nodes.push(node);
+    await this.saveState();
+  }
+
+  async updateConnections(workflowId, connections) {
+    if (!this.state.workflows || !this.state.workflows[workflowId]) {
+      throw new Error('Workflow not found');
+    }
+
+    const workflow = this.state.workflows[workflowId];
+    
+    // Validate connections
+    for (const connection of connections) {
+      const { sourceId, targetId } = connection;
+      const nodes = workflow.nodes || [];
+      const sourceExists = nodes.some(n => n.id === sourceId);
+      const targetExists = nodes.some(n => n.id === targetId);
+
+      if (!sourceExists || !targetExists) {
+        throw new Error('Invalid connection: node not found');
+      }
+    }
+
+    this.state.workflows[workflowId].connections = connections;
+    await this.saveState();
   }
 
   observe(key, callback) {
@@ -157,66 +232,16 @@ class StateManager extends EventEmitter {
     };
   }
 
-  getState(key) {
-    return this.state.get(key);
-  }
-
-  async loadState() {
-    try {
-      // Ensure the directory exists
-      const dir = path.dirname(this.stateFilePath);
+  async notifyObservers(key) {
+    const observers = this.observers.get(key) || [];
+    for (const observer of observers) {
       try {
-        await fs.mkdir(dir, { recursive: true });
-      } catch (err) {
-        // Ignore if directory already exists
-        if (err.code !== 'EEXIST') {
-          throw err;
-        }
-      }
-      
-      const data = await fs.readFile(this.stateFilePath, 'utf8');
-      const loadedState = JSON.parse(data);
-      this.state = new Map(Object.entries(loadedState));
-      logger.info('State loaded successfully');
-    } catch (error) {
-      if (error.code === 'ENOENT') {
-        logger.info('No existing state file found, starting fresh');
-      } else {
-        logger.error('Error loading state:', error);
+        await observer(this.state[key]);
+      } catch (error) {
+        logger.error(`Error notifying observer for ${key}:`, error);
       }
     }
-  }
-
-  async saveState() {
-    try {
-      // Ensure the directory exists
-      const dir = path.dirname(this.stateFilePath);
-      try {
-        await fs.mkdir(dir, { recursive: true });
-      } catch (err) {
-        // Ignore if directory already exists
-        if (err.code !== 'EEXIST') {
-          throw err;
-        }
-      }
-      
-      await fs.writeFile(this.stateFilePath, JSON.stringify(Object.fromEntries(this.state), null, 2));
-      logger.debug('State saved successfully');
-    } catch (error) {
-      logger.error('Error saving state:', error);
-      throw error;
-    }
-  }
-
-  async resetState() {
-    this.state.clear();
-    await this.saveState();
-    logger.info('State reset successfully');
-  }
-
-  getSnapshot() {
-    return Object.fromEntries(this.state);
   }
 }
 
-module.exports = new StateManager(); 
+module.exports = StateManager; 

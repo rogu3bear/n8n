@@ -17,8 +17,8 @@
     "debug:all": "docker-compose -f python/docker-compose.yml run --rm npm-env npm run debug:all:docker",
     "lint": "eslint src/",
     "format": "docker-compose -f python/docker-compose.yml run --rm npm-env npm run format:docker",
-    "setup:python": "./python/setup-venv.sh",
-    "check:python": "./python/run-with-venv.sh python python/error_handler.py",
+    "setup:python": "python/env_handler.py setup",
+    "check:python": "python/env_handler.py run python/error_handler.py",
     "clean:python": "rm -rf python/.venv",
     "rebuild:python": "npm run clean:python && npm run setup:python",
     "docker:check": "command -v docker >/dev/null 2>&1 || { echo 'Docker is not installed. Using local Python environment.'; exit 0; }",
@@ -91,6 +91,7 @@
   "devDependencies": {
     "@babel/core": "^7.24.0",
     "@babel/preset-env": "^7.24.0",
+    "@eslint/js": "^9.23.0",
     "@jest/globals": "^29.7.0",
     "@types/jest": "^29.5.14",
     "@types/react": "^18.2.0",
@@ -100,8 +101,10 @@
     "cors": "^2.8.5",
     "electron-builder": "^26.0.12",
     "electron-rebuild": "^3.2.9",
-    "eslint": "^8.57.0",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.4",
     "express-rate-limit": "^7.5.0",
+    "globals": "^16.0.0",
     "helmet": "^8.1.0",
     "husky": "^8.0.3",
     "jest": "^29.7.0",
@@ -110,9 +113,11 @@
     "mocha": "^10.2.0",
     "nodemon": "^3.0.1",
     "prettier": "^3.2.5",
+    "rfdc": "^1.4.1",
     "snyk": "^1.1200.0",
     "ts-jest": "^29.3.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.28.0"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

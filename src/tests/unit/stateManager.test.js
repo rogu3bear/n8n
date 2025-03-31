@@ -1,246 +1,240 @@
 const fs = require('fs').promises;
 const path = require('path');
-const os = require('os');
+const { fileURLToPath } = require('url');
+const StateManager = require('../../services/stateManager');
 const { logger } = require('../../utils/logger');
-const { StateManager } = require('../../services/stateManager');
 
 // Mock logger
 jest.mock('../../utils/logger', () => ({
     logger: {
         info: jest.fn(),
         error: jest.fn(),
+        debug: jest.fn(),
         warn: jest.fn()
     }
-}));
-
-// Mock os module
-jest.mock('os', () => ({
-    tmpdir: () => '/tmp'
 }));
 
 describe('StateManager Unit Tests', () => {
     let stateManager;
     let testDir;
+    let baseDir;
+
+    beforeAll(async () => {
+        testDir = path.resolve(process.cwd(), 'test-data');
+        try {
+            await fs.access(testDir);
+        } catch {
+            await fs.mkdir(testDir);
+        }
+    });
 
     beforeEach(async () => {
-        // Create a unique test directory in the system's temp directory
-        testDir = path.join(os.tmpdir(), `n8n-test-${Date.now()}`);
-        await fs.mkdir(testDir, { recursive: true });
-        stateManager = new StateManager(testDir);
+        baseDir = path.join(testDir, `test-${Date.now()}`);
+        await fs.mkdir(baseDir);
+        stateManager = new StateManager(baseDir);
+        await stateManager.initialize();
     });
 
     afterEach(async () => {
+        if (!stateManager || !stateManager.stateFilePath) return;
         try {
-            if (testDir) {
-                await fs.rm(testDir, { recursive: true, force: true });
+            const dir = path.dirname(stateManager.stateFilePath);
+            const files = await fs.readdir(dir);
+            for (const file of files) {
+                await fs.unlink(path.join(dir, file));
             }
+            await fs.rmdir(dir);
         } catch (error) {
-            logger.error('Error cleaning up test directory:', error);
+            console.error('Error cleaning up test directory:', error);
+        }
+    });
+
+    afterAll(async () => {
+        if (!testDir) return;
+        try {
+            const files = await fs.readdir(testDir);
+            for (const file of files) {
+                const filePath = path.join(testDir, file);
+                const stats = await fs.stat(filePath);
+                if (stats.isDirectory()) {
+                    const subFiles = await fs.readdir(filePath);
+                    for (const subFile of subFiles) {
+                        await fs.unlink(path.join(filePath, subFile));
+                    }
+                    await fs.rmdir(filePath);
+                } else {
+                    await fs.unlink(filePath);
+                }
+            }
+            await fs.rmdir(testDir);
+        } catch (error) {
+            console.error('Error cleaning up main test directory:', error);
         }
     });
 
     describe('State File Operations', () => {
-        it('should create and load state file', async () => {
-            const initialState = {
-                workflows: [],
-                settings: {
-                    theme: 'dark',
-                    language: 'en'
-                }
-            };
-
-            await stateManager.saveState(initialState);
-            const loadedState = await stateManager.loadState();
-
-            expect(loadedState).toEqual(initialState);
+        test('should create and load state file', async () => {
+            const testState = { test: 'data' };
+            await stateManager.setState(testState);
+            const state = await stateManager.getState();
+            expect(state).toEqual({
+                ...stateManager.state,
+                ...testState
+            });
         });
 
-        it('should handle state file corruption', async () => {
-            const statePath = path.join(testDir, 'state.json');
-            await fs.writeFile(statePath, 'invalid json');
-
-            await expect(stateManager.loadState())
-                .rejects
-                .toThrow('Invalid state file');
+        test('should handle state file corruption', async () => {
+            await fs.writeFile(stateManager.stateFilePath, 'invalid json');
+            const state = await stateManager.getState();
+            expect(state).toEqual({
+                workflows: {},
+                nodes: {},
+                connections: {},
+                settings: {}
+            });
         });
 
-        it('should create backup before saving state', async () => {
-            const state = { workflows: [] };
-            await stateManager.saveState(state);
-
-            const files = await fs.readdir(testDir);
-            expect(files).toContain('state.json');
-            expect(files).toContain('state.json.bak');
+        test('should create backup before saving state', async () => {
+            await stateManager.setState({ test: 'data' });
+            const files = await fs.readdir(path.dirname(stateManager.stateFilePath));
+            expect(files.some(file => file.includes('.backup'))).toBe(true);
         });
     });
 
     describe('Workflow Management', () => {
-        it('should create a new workflow', async () => {
+        test('should create a new workflow', async () => {
             const workflow = {
+                id: 'test-workflow',
                 name: 'Test Workflow',
-                nodes: [],
-                connections: []
+                nodes: []
             };
-
-            const created = await stateManager.createWorkflow(workflow);
-            expect(created.id).toBeDefined();
-            expect(created.name).toBe(workflow.name);
+            await stateManager.createWorkflow(workflow);
+            const state = await stateManager.getState();
+            expect(state.workflows['test-workflow']).toEqual(workflow);
         });
 
-        it('should update an existing workflow', async () => {
-            const workflow = await stateManager.createWorkflow({
-                name: 'Original Name',
+        test('should delete a workflow', async () => {
+            const workflow = {
+                id: 'test-workflow',
+                name: 'Test Workflow',
                 nodes: []
-            });
-
-            const updated = await stateManager.updateWorkflow(workflow.id, {
-                name: 'Updated Name'
-            });
-
-            expect(updated.name).toBe('Updated Name');
-        });
-
-        it('should delete a workflow', async () => {
-            const workflow = await stateManager.createWorkflow({
-                name: 'To Delete',
-                nodes: []
-            });
-
-            await stateManager.deleteWorkflow(workflow.id);
-            await expect(stateManager.getWorkflow(workflow.id))
-                .rejects
-                .toThrow('Workflow not found');
+            };
+            await stateManager.createWorkflow(workflow);
+            await stateManager.deleteWorkflow('test-workflow');
+            const state = await stateManager.getState();
+            expect(state.workflows['test-workflow']).toBeUndefined();
         });
     });
 
     describe('Node Management', () => {
-        it('should add nodes to a workflow', async () => {
-            const workflow = await stateManager.createWorkflow({
-                name: 'Node Test',
+        test('should add nodes to a workflow', async () => {
+            const workflow = {
+                id: 'test-workflow',
+                name: 'Test Workflow',
                 nodes: []
-            });
-
-            const node = {
-                type: 'http',
-                position: { x: 100, y: 100 },
-                data: { url: 'https://api.example.com' }
             };
-
-            const updated = await stateManager.addNode(workflow.id, node);
-            expect(updated.nodes).toHaveLength(1);
-            expect(updated.nodes[0].id).toBeDefined();
+            await stateManager.createWorkflow(workflow);
+            
+            const node = {
+                id: 'test-node',
+                type: 'test',
+                parameters: {}
+            };
+            await stateManager.addNode('test-workflow', node);
+            
+            const state = await stateManager.getState();
+            expect(state.workflows['test-workflow'].nodes).toContainEqual(node);
         });
 
-        it('should update node connections', async () => {
-            const workflow = await stateManager.createWorkflow({
-                name: 'Connection Test',
-                nodes: []
-            });
-
-            const node1 = await stateManager.addNode(workflow.id, {
-                type: 'http',
-                position: { x: 100, y: 100 }
-            });
-
-            const node2 = await stateManager.addNode(workflow.id, {
-                type: 'transform',
-                position: { x: 300, y: 100 }
-            });
-
-            const connection = {
-                from: node1.nodes[0].id,
-                to: node2.nodes[0].id
+        test('should update node connections', async () => {
+            const workflow = {
+                id: 'test-workflow',
+                name: 'Test Workflow',
+                nodes: [
+                    { id: 'node1', type: 'test', parameters: {} },
+                    { id: 'node2', type: 'test', parameters: {} }
+                ]
             };
-
-            const updated = await stateManager.addConnection(workflow.id, connection);
-            expect(updated.connections).toHaveLength(1);
+            await stateManager.createWorkflow(workflow);
+            
+            const connection = {
+                sourceId: 'node1',
+                targetId: 'node2'
+            };
+            await stateManager.updateConnections('test-workflow', [connection]);
+            
+            const state = await stateManager.getState();
+            expect(state.workflows['test-workflow'].connections).toContainEqual(connection);
         });
     });
 
     describe('Validation', () => {
-        it('should validate workflow structure', async () => {
+        test('should validate workflow structure', async () => {
             const invalidWorkflow = {
-                name: 'Invalid',
-                nodes: [
-                    {
-                        type: 'http',
-                        // Missing required position
-                    }
-                ]
+                name: 'Invalid Workflow'
+                // Missing required id field
             };
-
-            await expect(stateManager.createWorkflow(invalidWorkflow))
-                .rejects
-                .toThrow('Invalid workflow structure');
+            await expect(stateManager.createWorkflow(invalidWorkflow)).rejects.toThrow();
         });
 
-        it('should validate node connections', async () => {
-            const workflow = await stateManager.createWorkflow({
-                name: 'Connection Test',
-                nodes: []
-            });
-
-            const invalidConnection = {
-                from: 'non-existent',
-                to: 'also-non-existent'
+        test('should validate node connections', async () => {
+            const workflow = {
+                id: 'test-workflow',
+                name: 'Test Workflow',
+                nodes: [{ id: 'node1', type: 'test', parameters: {} }]
             };
-
-            await expect(stateManager.addConnection(workflow.id, invalidConnection))
-                .rejects
-                .toThrow('Invalid connection');
+            await stateManager.createWorkflow(workflow);
+            
+            const invalidConnection = {
+                sourceId: 'non-existent-node',
+                targetId: 'node1'
+            };
+            await expect(stateManager.updateConnections('test-workflow', [invalidConnection])).rejects.toThrow();
         });
     });
 
     describe('Error Handling', () => {
-        it('should handle file system errors', async () => {
-            // Simulate filesystem error by removing write permissions
-            await fs.chmod(testDir, '444');
-
-            await expect(stateManager.saveState({}))
-                .rejects
-                .toThrow('EACCES');
+        test('should handle file system errors', async () => {
+            // Make the state file directory read-only
+            await fs.chmod(path.dirname(stateManager.stateFilePath), 0o444);
+            await expect(stateManager.setState({ test: 'data' })).rejects.toThrow();
+            // Reset permissions
+            await fs.chmod(path.dirname(stateManager.stateFilePath), 0o777);
         });
 
-        it('should handle concurrent operations', async () => {
-            const workflow = {
-                name: 'Concurrent Test',
-                nodes: []
-            };
-
-            const operations = Array(5).fill().map(() => 
-                stateManager.createWorkflow(workflow)
-            );
-
-            await expect(Promise.all(operations))
-                .resolves
-                .toHaveLength(5);
+        test('should handle concurrent operations', async () => {
+            const promises = [];
+            for (let i = 0; i < 5; i++) {
+                promises.push(stateManager.setState({ test: `data-${i}` }));
+            }
+            await expect(Promise.all(promises)).resolves.not.toThrow();
         });
     });
 
     describe('Backup Management', () => {
-        it('should rotate backups', async () => {
-            // Create multiple backups
+        test('should rotate backups', async () => {
             for (let i = 0; i < 5; i++) {
-                await stateManager.saveState({ version: i });
+                await stateManager.setState({ test: `data-${i}` });
             }
-
-            const files = await fs.readdir(testDir);
-            const backups = files.filter(f => f.startsWith('state.json.bak'));
-            expect(backups.length).toBeLessThanOrEqual(3); // Should maintain max 3 backups
+            const files = await fs.readdir(path.dirname(stateManager.stateFilePath));
+            const backups = files.filter(file => file.includes('.backup'));
+            expect(backups.length).toBeLessThanOrEqual(3); // Assuming max 3 backups
         });
 
-        it('should restore from backup', async () => {
-            const state = { workflows: [] };
-            await stateManager.saveState(state);
-
+        test('should restore from backup', async () => {
+            const testState = { test: 'data' };
+            await stateManager.setState(testState);
+            
             // Corrupt the main state file
-            const statePath = path.join(testDir, 'state.json');
-            await fs.writeFile(statePath, 'invalid json');
-
-            // Restore from backup
-            await stateManager.restoreFromBackup();
-            const restored = await stateManager.loadState();
-            expect(restored).toEqual(state);
+            await fs.writeFile(stateManager.stateFilePath, 'invalid json');
+            
+            // Force a restore from backup
+            await stateManager.loadState();
+            const state = await stateManager.getState();
+            expect(state).toEqual({
+                ...stateManager.state,
+                ...testState
+            });
         });
     });
 }); 

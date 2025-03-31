@@ -309,7 +309,7 @@ if (process.argv.includes('--test-mode')) {
       
       // Load the app
       if (process.env.NODE_ENV === 'development') {
-        await mainWindow.loadURL('http://localhost:3000');
+        await mainWindow.loadURL('http://localhost:5173');
         mainWindow.webContents.openDevTools();
       } else {
         await mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
@@ -340,9 +340,9 @@ if (process.argv.includes('--test-mode')) {
     }
   });
 
-  app.on('activate', async () => {
-    if (mainWindow === null) {
-      await createWindow();
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
     }
   });
 
@@ -432,66 +432,41 @@ if (process.argv.includes('--test-mode')) {
     // Handle workflow execution
     ipcMain.handle('execute-workflow', async (event, workflow) => {
       try {
-        const workflowPath = await saveWorkflow(workflow, workflow.name);
-        const output = await executeWorkflowLocally(workflowPath);
-        return { success: true, output };
+        // Save workflow to file
+        const workflowPath = path.join(WORKFLOW_DIR, `${workflow.name}.json`);
+        fs.writeFileSync(workflowPath, JSON.stringify(workflow, null, 2));
+
+        // Execute workflow using n8n CLI
+        return new Promise((resolve, reject) => {
+          exec(`npx n8n execute --file=${workflowPath}`, (error, stdout, stderr) => {
+            if (error) {
+              log.error('Workflow execution error:', error);
+              reject(error);
+              return;
+            }
+            log.info('Workflow execution output:', stdout);
+            resolve({ success: true, output: stdout });
+          });
+        });
       } catch (error) {
-        log.error(`Workflow execution failed: ${error.message}`);
-        return { success: false, error: error.message };
+        log.error('Error executing workflow:', error);
+        throw error;
       }
     });
-  }
 
-  /**
-   * Execute a workflow locally without API key
-   * @param {string} workflowPath Path to the workflow file
-   * @returns {Promise<string>} The workflow output
-   */
-  async function executeWorkflowLocally(workflowPath) {
-    try {
-      log.info(`Executing workflow from: ${workflowPath}`);
-      
-      return new Promise((resolve, reject) => {
-        exec(`npx n8n execute --file=${workflowPath}`, (error, stdout, stderr) => {
-          if (error) {
-            log.error(`Error executing workflow: ${stderr}`);
-            return reject(error);
-          }
-          log.info(`Workflow output: ${stdout}`);
-          resolve(stdout);
-        });
-      });
-    } catch (error) {
-      log.error(`Failed to execute workflow: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Save a workflow to the local filesystem
-   * @param {Object} workflow The workflow object
-   * @param {string} name The workflow name
-   * @returns {Promise<string>} The path to the saved workflow
-   */
-  async function saveWorkflow(workflow, name) {
-    try {
-      // Ensure workflow directory exists
-      if (!fs.existsSync(WORKFLOW_DIR)) {
-        fs.mkdirSync(WORKFLOW_DIR, { recursive: true });
+    ipcMain.handle('get-workflows', async () => {
+      try {
+        const files = fs.readdirSync(WORKFLOW_DIR);
+        return files
+          .filter(file => file.endsWith('.json'))
+          .map(file => {
+            const content = fs.readFileSync(path.join(WORKFLOW_DIR, file), 'utf8');
+            return JSON.parse(content);
+          });
+      } catch (error) {
+        log.error('Error getting workflows:', error);
+        throw error;
       }
-      
-      // Create a safe filename
-      const safeName = name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const workflowPath = path.join(WORKFLOW_DIR, `${safeName}.json`);
-      
-      // Save the workflow
-      await fsPromises.writeFile(workflowPath, JSON.stringify(workflow, null, 2));
-      log.info(`Saved workflow to: ${workflowPath}`);
-      
-      return workflowPath;
-    } catch (error) {
-      log.error(`Failed to save workflow: ${error.message}`);
-      throw error;
-    }
+    });
   }
 }

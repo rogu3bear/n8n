@@ -1,28 +1,36 @@
 import { defineConfig } from 'vite';
-import vue from '@vitejs/plugin-vue';
+import electron from 'vite-plugin-electron';
+import renderer from 'vite-plugin-electron-renderer';
 import { resolve } from 'path';
 
-// https://vitejs.dev/config
+// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [vue()],
-  build: {
-    outDir: 'dist',
-    emptyOutDir: true,
-    rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'src/core/main.js'),
-        renderer: resolve(__dirname, 'src/renderer/index.html'),
-      },
-      external: ['electron', 'keytar'],
-    },
-  },
-  server: {
-    port: 5678,
-    strictPort: true,
-  },
+  plugins: [
+    electron([
+      {
+        // Main process entry point
+        entry: 'src/core/main.js',
+        vite: {
+          build: {
+            outDir: 'dist/main',
+            sourcemap: true,
+            rollupOptions: {
+              external: ['electron', 'electron-log', 'exceljs']
+            }
+          }
+        }
+      }
+    ]),
+    renderer()
+  ],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
-    },
+      '@': resolve(__dirname, 'src')
+    }
   },
+  build: {
+    outDir: 'dist/renderer',
+    emptyOutDir: true,
+    sourcemap: true
+  }
 }); 

@@ -10,7 +10,13 @@
     "make": "electron-forge make",
     "start": "electron-forge start",
     "package": "electron-forge package",
-    "test": "jest"
+    "test": "jest",
+    "test:features": "jest src/features",
+    "test:core": "jest src/core",
+    "test:shared": "jest src/shared",
+    "test:infrastructure": "jest src/infrastructure",
+    "lint": "eslint src/**/*.{js,jsx,ts,tsx}",
+    "lint:fix": "eslint src/**/*.{js,jsx,ts,tsx} --fix"
   },
   "author": "",
   "license": "MIT",

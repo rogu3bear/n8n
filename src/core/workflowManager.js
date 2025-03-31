@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const log = require('electron-log');
-const { excelService } = require('../services/excelService');
+const { excelService } = require('../features/workflows/excelService');
 
 class WorkflowManager {
   constructor() {

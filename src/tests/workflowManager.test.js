@@ -2,6 +2,7 @@ const { workflowManager } = require('../core/workflowManager');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { excelService } = require('../features/workflows/excelService');
 
 // Mock dependencies
 jest.mock('electron-log', () => ({
@@ -89,7 +90,6 @@ describe('WorkflowManager', () => {
       expect(result.resultPath).toBeDefined();
       
       // Verify Excel operations
-      const { excelService } = require('../services/excelService');
       expect(excelService.createWorkbook).toHaveBeenCalled();
       expect(excelService.addWorksheet).toHaveBeenCalledWith('Workflow Details');
       expect(excelService.saveWorkbook).toHaveBeenCalled();
@@ -101,7 +101,6 @@ describe('WorkflowManager', () => {
 
     test('handles errors during workflow execution', async () => {
       // Mock excelService to throw an error
-      const { excelService } = require('../services/excelService');
       excelService.createWorkbook.mockRejectedValueOnce(new Error('Excel error'));
 
       await expect(workflowManager.executeCustomWorkflow({

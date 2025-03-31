@@ -2,15 +2,24 @@
 node_modules/
 .pnp/
 .pnp.js
+.yarn/
+.pnp.*
+.yarnrc.yml
+.yarn-integrity
 
 # Testing
 coverage/
+.nyc_output/
+*.lcov
 .nyc_output/
 
 # Production
 dist/
 build/
 out/
+*.asar
+*.asar.unpacked
+release/
 
 # Development
 .env
@@ -22,6 +31,7 @@ out/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # IDE
 .idea/
@@ -29,11 +39,14 @@ yarn-error.log*
 *.swp
 *.swo
 .DS_Store
+*.sublime-workspace
+*.sublime-project
 
 # Electron
 .electron-builder.env
-*.asar
-*.asar.unpacked
+.electron-builder.env.local
+.electron-builder.env.development
+.electron-builder.env.production
 
 # Python
 __pycache__/
@@ -47,11 +60,17 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.python-version
+.pytest_cache/
+.coverage
+htmlcov/
 
 # n8n
 .n8n/
 .n8n-deps/
 .n8n-config/
+.n8n-custom/
+.n8n-credentials/
 
 # Logs
 logs/
@@ -59,18 +78,25 @@ logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
 # Runtime data
 pids
 *.pid
 *.seed
 *.pid.lock
+*.sock
+*.sock.*
 
 # Optional npm cache directory
 .npm
+.npmrc
+.npmignore
 
 # Optional eslint cache
 .eslintcache
+.eslintrc.cache
 
 # Optional REPL history
 .node_repl_history
@@ -78,14 +104,16 @@ pids
 # Output of 'npm pack'
 *.tgz
 
-# Yarn Integrity file
-.yarn-integrity
+# Vite
+.vite/
+*.local
+*.local.*
+.vite-ssr-dist/
+.vite-ssr-cache/
 
-# dotenv environment variable files
-.env
-.env.development.local
-.env.test.local
-.env.production.local
+# TypeScript
+*.tsbuildinfo
+tsconfig.tsbuildinfo
 
 # Editor directories and files
 *.suo
@@ -93,6 +121,8 @@ pids
 *.njsproj
 *.sln
 *.sw?
+*.sublime-workspace
+*.sublime-project
 
 # OS generated files
 .DS_Store?
@@ -102,10 +132,15 @@ pids
 ehthumbs.db
 Thumbs.db
 
-# Python virtual environment
-.venv/
-venv/
-ENV/
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
 
-# n8n specific
-.n8n/ 
+# Build artifacts
+*.min.js
+*.min.css
+*.map
+*.sourcemap 

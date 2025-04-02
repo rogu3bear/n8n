@@ -1,74 +1,82 @@
 /**
  * Logger utility for consistent logging across the application
  */
+const log = require('electron-log');
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
+
 class Logger {
     constructor() {
-        this.logLevel = process.env.LOG_LEVEL || 'info';
+        this.logDir = path.join(os.homedir(), '.n8n', 'logs');
+        this.maxLogSize = 10 * 1024 * 1024; // 10MB
+        this.maxLogFiles = 5;
+        
+        this.initialize();
     }
 
-    /**
-     * Log an info message
-     * @param {string} message - The message to log
-     * @param {Object} [data] - Optional data to log
-     */
-    info(message, data) {
-        if (this.shouldLog('info')) {
-            console.log(`[INFO] ${message}`, data || '');
+    initialize() {
+        // Ensure log directory exists
+        if (!fs.existsSync(this.logDir)) {
+            fs.mkdirSync(this.logDir, { recursive: true });
         }
+
+        // Configure logging
+        log.transports.file.resolvePath = () => path.join(this.logDir, 'main.log');
+        log.transports.file.maxSize = this.maxLogSize;
+        log.transports.file.maxFiles = this.maxLogFiles;
+
+        // Configure console transport
+        log.transports.console.format = '[{level}] {text}';
     }
 
-    /**
-     * Log a warning message
-     * @param {string} message - The message to log
-     * @param {Object} [data] - Optional data to log
-     */
-    warn(message, data) {
-        if (this.shouldLog('warn')) {
-            console.warn(`[WARN] ${message}`, data || '');
+    createLogger(category) {
+        const categoryLogDir = path.join(this.logDir, category);
+        if (!fs.existsSync(categoryLogDir)) {
+            fs.mkdirSync(categoryLogDir, { recursive: true });
         }
-    }
 
-    /**
-     * Log an error message
-     * @param {string} message - The message to log
-     * @param {Error|Object} [error] - Optional error object or data to log
-     */
-    error(message, error) {
-        if (this.shouldLog('error')) {
-            console.error(`[ERROR] ${message}`, error || '');
-        }
-    }
-
-    /**
-     * Log a debug message
-     * @param {string} message - The message to log
-     * @param {Object} [data] - Optional data to log
-     */
-    debug(message, data) {
-        if (this.shouldLog('debug')) {
-            console.debug(`[DEBUG] ${message}`, data || '');
-        }
-    }
-
-    /**
-     * Check if the message should be logged based on log level
-     * @param {string} level - The log level to check
-     * @returns {boolean}
-     * @private
-     */
-    shouldLog(level) {
-        const levels = {
-            error: 0,
-            warn: 1,
-            info: 2,
-            debug: 3
+        const logger = {
+            info: (message, ...args) => {
+                log.info(`[${category}] ${message}`, ...args);
+            },
+            error: (message, ...args) => {
+                log.error(`[${category}] ${message}`, ...args);
+            },
+            warn: (message, ...args) => {
+                log.warn(`[${category}] ${message}`, ...args);
+            },
+            debug: (message, ...args) => {
+                log.debug(`[${category}] ${message}`, ...args);
+            }
         };
 
-        return levels[level] <= levels[this.logLevel];
+        return logger;
+    }
+
+    logError(error, context = {}) {
+        const errorLog = {
+            timestamp: new Date().toISOString(),
+            error: {
+                message: error.message,
+                stack: error.stack,
+                code: error.code
+            },
+            context,
+            system: {
+                platform: process.platform,
+                arch: process.arch,
+                nodeVersion: process.version,
+                memory: process.memoryUsage()
+            }
+        };
+
+        log.error('Error occurred:', errorLog);
+    }
+
+    getLogPath(category) {
+        return path.join(this.logDir, category);
     }
 }
 
-// Export a singleton instance
-module.exports = {
-    logger: new Logger()
-}; 
+module.exports = new Logger(); 
